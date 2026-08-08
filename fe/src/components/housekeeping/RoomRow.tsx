@@ -9,6 +9,7 @@ const roomTypeLabels = {
 
 type RoomRowProps = {
   room: Room
+  isUpdating?: boolean
   onStatusChange: (roomId: string, status: RoomStatus) => void
 }
 
@@ -16,7 +17,7 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export function RoomRow({ room, onStatusChange }: RoomRowProps) {
+export function RoomRow({ room, isUpdating = false, onStatusChange }: RoomRowProps) {
   const action =
     room.status === 'dirty' || room.status === 'inspect'
       ? { label: 'Start Cleaning', next: 'in_progress' as const }
@@ -46,10 +47,11 @@ export function RoomRow({ room, onStatusChange }: RoomRowProps) {
         {action ? (
           <button
             type="button"
+            disabled={isUpdating}
             onClick={() => onStatusChange(room.id, action.next)}
-            className="rounded-lg bg-hms-navy px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-hms-navy-light"
+            className="rounded-lg bg-hms-navy px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-hms-navy-light disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {action.label}
+            {isUpdating ? 'Updating…' : action.label}
           </button>
         ) : (
           <span className="text-xs text-hms-muted">Ready</span>
