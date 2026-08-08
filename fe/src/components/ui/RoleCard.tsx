@@ -1,5 +1,8 @@
+import { Link } from 'react-router-dom'
 import type { StaffRole } from '../../types/role'
 import { RoleIcon } from './RoleIcon'
+
+const availableRoutes = new Set(['/housekeeping'])
 
 const accentStyles: Record<StaffRole['accent'], string> = {
   navy: 'bg-hms-navy/10 text-hms-navy ring-hms-navy/20',
@@ -16,6 +19,7 @@ type RoleCardProps = {
 
 export function RoleCard({ role }: RoleCardProps) {
   const accent = accentStyles[role.accent]
+  const isAvailable = availableRoutes.has(role.path)
 
   return (
     <article className="group flex flex-col rounded-xl border border-hms-border bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-hms-gold/40 hover:shadow-md">
@@ -30,15 +34,24 @@ export function RoleCard({ role }: RoleCardProps) {
         {role.description}
       </p>
 
-      <button
-        type="button"
-        disabled
-        className="mt-5 w-full rounded-lg border border-hms-border bg-hms-cream px-4 py-2.5 text-sm font-medium text-hms-muted transition-colors group-hover:border-hms-navy group-hover:bg-hms-navy group-hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-        aria-label={`Open ${role.title} portal — coming soon`}
-      >
-        Enter Portal
-        <span className="ml-1 text-xs opacity-70">(coming soon)</span>
-      </button>
+      {isAvailable ? (
+        <Link
+          to={role.path}
+          className="mt-5 block w-full rounded-lg border border-hms-border bg-hms-cream px-4 py-2.5 text-center text-sm font-medium text-hms-navy transition-colors group-hover:border-hms-navy group-hover:bg-hms-navy group-hover:text-white"
+        >
+          Enter Portal
+        </Link>
+      ) : (
+        <button
+          type="button"
+          disabled
+          className="mt-5 w-full rounded-lg border border-hms-border bg-hms-cream px-4 py-2.5 text-sm font-medium text-hms-muted disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label={`Open ${role.title} portal — coming soon`}
+        >
+          Enter Portal
+          <span className="ml-1 text-xs opacity-70">(coming soon)</span>
+        </button>
+      )}
     </article>
   )
 }
