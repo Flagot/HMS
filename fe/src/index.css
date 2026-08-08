@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --color-hms-navy: #1a2b4a;
+  --color-hms-navy-light: #2a4068;
+  --color-hms-gold: #c4a35a;
+  --color-hms-gold-dark: #9a7b3c;
+  --color-hms-cream: #f8f6f1;
+  --color-hms-teal: #2d6a6a;
+  --color-hms-slate: #475569;
+  --color-hms-muted: #64748b;
+  --color-hms-border: #e2ddd3;
+
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Playfair Display", Georgia, serif;
+}
+
+@layer base {
+  body {
+    @apply font-sans text-hms-navy antialiased;
+  }
+}
