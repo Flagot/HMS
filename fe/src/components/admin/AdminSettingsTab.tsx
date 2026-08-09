@@ -124,7 +124,8 @@ export function AdminSettingsTab({
           Staff portals
         </h3>
         <p className="mt-1 text-sm text-hms-muted">
-          Jump to operational roles. User login is not required in this build.
+          Jump to operational portals (requires a matching staff account). Create
+          users from the Users tab.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {portalLinks.map((link) => (

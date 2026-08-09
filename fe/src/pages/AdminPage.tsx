@@ -18,6 +18,7 @@ import { AdminMenuTab } from '../components/admin/AdminMenuTab'
 import { AdminOverviewTab } from '../components/admin/AdminOverviewTab'
 import { AdminRoomsTab } from '../components/admin/AdminRoomsTab'
 import { AdminSettingsTab } from '../components/admin/AdminSettingsTab'
+import { AdminUsersTab } from '../components/admin/AdminUsersTab'
 import {
   formatRangeLabel,
   ManagerPeriodControls,
@@ -37,13 +38,20 @@ import type {
 } from '../types/admin'
 import type { Room } from '../types/room'
 
-type AdminTab = 'analytics' | 'overview' | 'rooms' | 'menu' | 'settings'
+type AdminTab =
+  | 'analytics'
+  | 'overview'
+  | 'rooms'
+  | 'menu'
+  | 'users'
+  | 'settings'
 
 const tabs: { id: AdminTab; label: string }[] = [
   { id: 'analytics', label: 'Analytics' },
   { id: 'overview', label: 'Overview' },
   { id: 'rooms', label: 'Rooms' },
   { id: 'menu', label: 'Menu' },
+  { id: 'users', label: 'Users' },
   { id: 'settings', label: 'Settings' },
 ]
 
@@ -92,6 +100,10 @@ export function AdminPage() {
       setLoading(true)
       setError(null)
       try {
+        if (tab === 'users') {
+          return
+        }
+
         if (tab === 'analytics') {
           await loadAnalytics()
           return
@@ -320,6 +332,8 @@ export function AdminPage() {
           onDelete={handleDeleteMenuItem}
         />
       ) : null}
+
+      {tab === 'users' ? <AdminUsersTab /> : null}
 
       {tab === 'settings' ? (
         <AdminSettingsTab
