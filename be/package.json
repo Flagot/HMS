@@ -7,7 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "seed": "tsx src/scripts/seedRooms.ts"
+    "seed": "tsx src/scripts/seedRooms.ts",
+    "seed:orders": "tsx src/scripts/seedOrders.ts",
+    "seed:menu": "tsx src/scripts/seedMenu.ts"
   },
   "dependencies": {
     "@types/cors": "^2.8.19",
