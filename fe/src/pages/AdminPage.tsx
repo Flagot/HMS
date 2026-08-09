@@ -43,6 +43,7 @@ import { ManagerRevenuePanels } from '../components/manager/ManagerRevenuePanels
 import { ManagerRoomsBoard } from '../components/manager/ManagerRoomsBoard'
 import { StoreDashboardTab } from '../components/store/StoreDashboardTab'
 import { PageHeader } from '../components/ui/PageHeader'
+import { useHotelBrand } from '../hotel/HotelBrandContext'
 import { useNotifications } from '../notifications/NotificationContext'
 import type {
   AdminAnalytics,
@@ -102,6 +103,7 @@ function toDateInputValue(date: Date) {
 
 export function AdminPage() {
   const { pushNotice } = useNotifications()
+  const { refreshHotelName } = useHotelBrand()
   const [tab, setTab] = useState<AdminTab>('analytics')
   const [period, setPeriod] = useState<AdminPeriod>('day')
   const [date, setDate] = useState(() => toDateInputValue(new Date()))
@@ -420,6 +422,12 @@ export function AdminPage() {
     try {
       const updated = await updateAdminSettings(input)
       setSettings(updated)
+      await refreshHotelName()
+      pushNotice({
+        tone: 'success',
+        title: 'Settings saved',
+        message: `Hotel name is now “${updated.hotelName}”.`,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings')
       throw err

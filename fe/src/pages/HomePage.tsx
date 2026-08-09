@@ -1,5 +1,6 @@
 import { Link, Navigate } from 'react-router-dom'
 import { staffRoles } from '../data/roles'
+import { useHotelBrand } from '../hotel/HotelBrandContext'
 import { authClient } from '../lib/auth-client'
 import { pathForRole } from '../lib/auth-utils'
 
@@ -7,6 +8,7 @@ const HERO_IMAGE =
   'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=2400&q=80'
 
 export function HomePage() {
+  const { hotelName } = useHotelBrand()
   const { data: session, isPending } = authClient.useSession()
 
   if (isPending) {
@@ -40,8 +42,7 @@ export function HomePage() {
         <div className="relative mx-auto flex min-h-svh max-w-6xl flex-col justify-end px-4 pb-16 pt-28 sm:px-6 sm:pb-20 sm:pt-32 lg:px-8 lg:pb-24">
           <div className="max-w-2xl">
             <p className="landing-motion font-display text-5xl font-semibold tracking-tight text-white animate-landing-fade sm:text-6xl lg:text-7xl">
-              GrandStay
-              <span className="text-hms-gold"> HMS</span>
+              {hotelName}
             </p>
             <div
               aria-hidden="true"
@@ -102,7 +103,7 @@ export function HomePage() {
             Accounts are created by an administrator — there is no public signup.
           </p>
           <p className="text-xs tracking-wide text-white/35">
-            © {new Date().getFullYear()} GrandStay HMS
+            © {new Date().getFullYear()} {hotelName}
           </p>
         </div>
       </footer>

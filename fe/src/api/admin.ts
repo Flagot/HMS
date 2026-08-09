@@ -147,6 +147,35 @@ export function submitPasswordResetRequest(
   })
 }
 
+export type UpdateStaffUserInput = {
+  name?: string
+  username?: string
+  email?: string
+  phone?: string
+  newPassword?: string
+}
+
+export type StaffUserDto = {
+  id: string
+  name: string
+  email: string
+  username?: string | null
+  phone?: string | null
+  role?: string | null
+  banned?: boolean
+  createdAt?: string | Date
+}
+
+export function updateStaffUser(
+  userId: string,
+  input: UpdateStaffUserInput,
+): Promise<{ message: string; user: StaffUserDto }> {
+  return apiFetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
 export type PayStatus = 'paid' | 'upcoming' | 'due' | 'overdue' | 'unpaid'
 
 export type PayrollEmployee = {

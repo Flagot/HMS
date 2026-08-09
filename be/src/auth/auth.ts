@@ -199,6 +199,68 @@ export const auth = betterAuth({
           },
         }
       }
+
+      if (ctx.path === '/admin/update-user') {
+        const body = ctx.body as
+          | { userId?: string; data?: Record<string, unknown> }
+          | undefined
+        const data =
+          body?.data && typeof body.data === 'object' ? { ...body.data } : {}
+        const userId = typeof body?.userId === 'string' ? body.userId : ''
+
+        if (typeof data.username === 'string') {
+          const usernameValue = data.username.trim()
+          if (usernameValue.length < 3) {
+            throw new APIError('BAD_REQUEST', {
+              message: 'Username must be at least 3 characters',
+            })
+          }
+
+          const normalized = usernameValue.toLowerCase()
+          const taken = await authDb.collection('user').findOne({
+            $or: [{ username: normalized }, { username: usernameValue }],
+          })
+          if (taken && String(taken.id ?? taken._id) !== userId) {
+            throw new APIError('BAD_REQUEST', {
+              message: 'Username is already taken',
+            })
+          }
+
+          data.username = normalized
+          data.displayUsername =
+            typeof data.displayUsername === 'string' && data.displayUsername.trim()
+              ? data.displayUsername.trim()
+              : usernameValue
+        }
+
+        if (typeof data.email === 'string') {
+          const usernameForEmail =
+            typeof data.username === 'string'
+              ? data.username
+              : typeof data.displayUsername === 'string'
+                ? data.displayUsername
+                : 'user'
+          data.email = normalizeOptionalEmail(data.email, usernameForEmail)
+        }
+
+        if (typeof data.phone === 'string') {
+          data.phone = data.phone.trim()
+        }
+
+        if (typeof data.name === 'string') {
+          data.name = data.name.trim()
+        }
+
+        return {
+          context: {
+            ...ctx,
+            body: {
+              ...body,
+              data,
+            },
+          },
+        }
+      }
     }),
   },
 })

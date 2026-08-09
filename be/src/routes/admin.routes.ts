@@ -26,8 +26,11 @@ import {
   unmarkPayrollPaid,
   updatePayrollProfile,
 } from '../controllers/payroll.controller.js'
+import { updateStaffUser } from '../controllers/staffUsers.controller.js'
 
 const router = Router()
+
+router.patch('/users/:id', updateStaffUser)
 
 router.get('/payroll', getAdminPayroll)
 router.get('/payroll/alerts', getPayrollAlerts)

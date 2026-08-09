@@ -3,6 +3,7 @@ import {
   dismissPasswordResetRequest,
   fetchPasswordResetRequests,
   resolvePasswordResetRequest,
+  updateStaffUser,
   type PasswordResetRequest,
 } from '../../api/admin'
 import { authClient } from '../../lib/auth-client'
@@ -30,6 +31,15 @@ type PendingConfirm =
     }
   | { kind: 'deactivate'; user: StaffUser }
   | { kind: 'reactivate'; user: StaffUser }
+
+type EditFormState = {
+  userId: string
+  name: string
+  username: string
+  email: string
+  phone: string
+  newPassword: string
+}
 
 function roleLabel(role: string | null | undefined) {
   const id = role?.split(',')[0]?.trim()
@@ -77,6 +87,31 @@ export function AdminUsersTab({ onPendingCountChange }: AdminUsersTabProps) {
     null,
   )
   const [confirmBusy, setConfirmBusy] = useState(false)
+  const [editing, setEditing] = useState<EditFormState | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+
+  function resetCreateForm() {
+    setName('')
+    setUsername('')
+    setPassword('')
+    setEmail('')
+    setPhone('')
+    setRole('reception')
+  }
+
+  function openCreateForm() {
+    setError(null)
+    setMessage(null)
+    setEditing(null)
+    setShowCreateForm(true)
+  }
+
+  function closeCreateForm() {
+    if (saving) return
+    setShowCreateForm(false)
+    resetCreateForm()
+  }
 
   const loadUsers = useCallback(async () => {
     const { data, error: listError } = await authClient.admin.listUsers({
@@ -150,17 +185,76 @@ export function AdminUsersTab({ onPendingCountChange }: AdminUsersTabProps) {
       }
 
       setMessage(`Created account for ${username.trim()}`)
-      setName('')
-      setUsername('')
-      setPassword('')
-      setEmail('')
-      setPhone('')
-      setRole('reception')
+      resetCreateForm()
+      setShowCreateForm(false)
       await loadUsers()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create user')
     } finally {
       setSaving(false)
+    }
+  }
+
+  function startEdit(user: StaffUser) {
+    setError(null)
+    setMessage(null)
+    setShowCreateForm(false)
+    setEditing({
+      userId: user.id,
+      name: user.name ?? '',
+      username: user.username ?? '',
+      email: displayEmail(user.email) === '—' ? '' : (user.email ?? ''),
+      phone: user.phone ?? '',
+      newPassword: '',
+    })
+  }
+
+  async function handleSaveEdit(event: FormEvent) {
+    event.preventDefault()
+    if (!editing) return
+
+    const nextName = editing.name.trim()
+    const nextUsername = editing.username.trim()
+    const nextPhone = editing.phone.trim()
+    const nextEmailRaw = editing.email.trim()
+    const nextPassword = editing.newPassword.trim()
+
+    if (nextUsername.length < 3) {
+      setError('Username must be at least 3 characters')
+      return
+    }
+
+    const existing = users.find((user) => user.id === editing.userId)
+    if (!existing) {
+      setError('User not found')
+      return
+    }
+
+    setEditSaving(true)
+    setError(null)
+    setMessage(null)
+
+    try {
+      if (nextPassword && nextPassword.length < 6) {
+        setError('New password must be at least 6 characters')
+        return
+      }
+
+      const result = await updateStaffUser(editing.userId, {
+        name: nextName || nextUsername,
+        username: nextUsername,
+        email: nextEmailRaw,
+        phone: nextPhone,
+        ...(nextPassword ? { newPassword: nextPassword } : {}),
+      })
+
+      setMessage(result.message)
+      setEditing(null)
+      await loadUsers()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update user')
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -300,6 +394,17 @@ export function AdminUsersTab({ onPendingCountChange }: AdminUsersTabProps) {
 
   return (
     <div className="space-y-6">
+      {error ? (
+        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+          {error}
+        </p>
+      ) : null}
+      {message ? (
+        <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          {message}
+        </p>
+      ) : null}
+
       <section className="rounded-xl border border-amber-200 bg-amber-50/70 p-5 shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="font-display text-lg font-semibold text-hms-navy">
@@ -379,112 +484,249 @@ export function AdminUsersTab({ onPendingCountChange }: AdminUsersTabProps) {
         )}
       </section>
 
-      <section className="rounded-xl border border-hms-border bg-white p-5 shadow-sm">
-        <h3 className="font-display text-lg font-semibold text-hms-navy">
-          Create staff account
-        </h3>
-        <p className="mt-1 text-sm text-hms-muted">
-          New users sign in with username and password. Email and phone are
-          optional.
-        </p>
-
-        {error && (
-          <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-            {error}
-          </p>
-        )}
-        {message && (
-          <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-            {message}
-          </p>
-        )}
-
-        <form
-          onSubmit={handleCreate}
-          className="mt-4 grid gap-3 sm:grid-cols-2"
-        >
-          <label className="block text-sm">
-            <span className="mb-1.5 block font-medium text-hms-navy">Name</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1.5 block font-medium text-hms-navy">
-              Username
-            </span>
-            <input
-              required
-              minLength={3}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
-            />
-          </label>
-          <PasswordField
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            className="w-full rounded-lg border border-hms-border bg-white py-2 pr-16 pl-3 text-sm outline-none focus:border-hms-navy"
-          />
-          <label className="block text-sm">
-            <span className="mb-1.5 block font-medium text-hms-navy">Role</span>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as StaffRoleId)}
-              className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
-            >
-              {staffRoleOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1.5 block font-medium text-hms-navy">
-              Email <span className="font-normal text-hms-muted">(optional)</span>
-            </span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1.5 block font-medium text-hms-navy">
-              Phone <span className="font-normal text-hms-muted">(optional)</span>
-            </span>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
-            />
-          </label>
-          <div className="sm:col-span-2">
+      {showCreateForm ? (
+        <section className="rounded-xl border border-hms-navy/20 bg-white p-5 shadow-sm ring-1 ring-hms-navy/10">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <h3 className="font-display text-lg font-semibold text-hms-navy">
+                Create staff account
+              </h3>
+              <p className="mt-1 text-sm text-hms-muted">
+                New users sign in with username and password. Email and phone are
+                optional.
+              </p>
+            </div>
             <button
-              type="submit"
+              type="button"
+              onClick={closeCreateForm}
               disabled={saving}
-              className="rounded-lg bg-hms-navy px-4 py-2 text-sm font-medium text-white hover:bg-hms-navy-light disabled:opacity-60"
+              className="text-sm font-medium text-hms-muted hover:text-hms-navy disabled:opacity-60"
             >
-              {saving ? 'Creating…' : 'Create user'}
+              Close
             </button>
           </div>
-        </form>
-      </section>
+
+          <form
+            onSubmit={handleCreate}
+            className="mt-4 grid gap-3 sm:grid-cols-2"
+          >
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-medium text-hms-navy">Name</span>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-medium text-hms-navy">
+                Username
+              </span>
+              <input
+                required
+                minLength={3}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
+              />
+            </label>
+            <PasswordField
+              id="create-staff-password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              className="w-full rounded-lg border border-hms-border bg-white py-2 pr-16 pl-3 text-sm outline-none focus:border-hms-navy"
+            />
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-medium text-hms-navy">Role</span>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as StaffRoleId)}
+                className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
+              >
+                {staffRoleOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-medium text-hms-navy">
+                Email{' '}
+                <span className="font-normal text-hms-muted">(optional)</span>
+              </span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-medium text-hms-navy">
+                Phone{' '}
+                <span className="font-normal text-hms-muted">(optional)</span>
+              </span>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
+              />
+            </label>
+            <div className="flex flex-wrap gap-2 sm:col-span-2">
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-lg bg-hms-navy px-4 py-2 text-sm font-medium text-white hover:bg-hms-navy-light disabled:opacity-60"
+              >
+                {saving ? 'Creating…' : 'Create user'}
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={closeCreateForm}
+                className="rounded-lg border border-hms-border px-4 py-2 text-sm font-medium text-hms-navy hover:bg-hms-cream disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {editing ? (
+        <section className="rounded-xl border border-hms-navy/20 bg-white p-5 shadow-sm ring-1 ring-hms-navy/10">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="font-display text-lg font-semibold text-hms-navy">
+              Edit staff account
+            </h3>
+            <p className="text-sm text-hms-muted">
+              Update profile details for this user
+            </p>
+          </div>
+
+          <form
+            onSubmit={handleSaveEdit}
+            className="mt-4 grid gap-3 sm:grid-cols-2"
+          >
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-medium text-hms-navy">Name</span>
+              <input
+                value={editing.name}
+                onChange={(e) =>
+                  setEditing((prev) =>
+                    prev ? { ...prev, name: e.target.value } : prev,
+                  )
+                }
+                className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-medium text-hms-navy">
+                Username
+              </span>
+              <input
+                required
+                minLength={3}
+                value={editing.username}
+                onChange={(e) =>
+                  setEditing((prev) =>
+                    prev ? { ...prev, username: e.target.value } : prev,
+                  )
+                }
+                className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-medium text-hms-navy">
+                Email{' '}
+                <span className="font-normal text-hms-muted">(optional)</span>
+              </span>
+              <input
+                type="email"
+                value={editing.email}
+                onChange={(e) =>
+                  setEditing((prev) =>
+                    prev ? { ...prev, email: e.target.value } : prev,
+                  )
+                }
+                className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-medium text-hms-navy">
+                Phone{' '}
+                <span className="font-normal text-hms-muted">(optional)</span>
+              </span>
+              <input
+                type="tel"
+                value={editing.phone}
+                onChange={(e) =>
+                  setEditing((prev) =>
+                    prev ? { ...prev, phone: e.target.value } : prev,
+                  )
+                }
+                className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
+              />
+            </label>
+            <div className="sm:col-span-2">
+              <PasswordField
+                id="edit-staff-password"
+                label="New password (optional)"
+                minLength={6}
+                value={editing.newPassword}
+                onChange={(e) =>
+                  setEditing((prev) =>
+                    prev ? { ...prev, newPassword: e.target.value } : prev,
+                  )
+                }
+                autoComplete="new-password"
+                placeholder="Leave blank to keep current password"
+                className="w-full rounded-lg border border-hms-border bg-white py-2 pr-16 pl-3 text-sm outline-none focus:border-hms-navy"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 sm:col-span-2">
+              <button
+                type="submit"
+                disabled={editSaving}
+                className="rounded-lg bg-hms-navy px-4 py-2 text-sm font-medium text-white hover:bg-hms-navy-light disabled:opacity-60"
+              >
+                {editSaving ? 'Saving…' : 'Save changes'}
+              </button>
+              <button
+                type="button"
+                disabled={editSaving}
+                onClick={() => setEditing(null)}
+                className="rounded-lg border border-hms-border px-4 py-2 text-sm font-medium text-hms-navy hover:bg-hms-cream disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>
+      ) : null}
 
       <section className="rounded-xl border border-hms-border bg-white p-5 shadow-sm">
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="font-display text-lg font-semibold text-hms-navy">
-            Staff users
-          </h3>
-          <p className="text-sm text-hms-muted">{total} total</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="font-display text-lg font-semibold text-hms-navy">
+              Staff users
+            </h3>
+            <p className="mt-1 text-sm text-hms-muted">{total} total</p>
+          </div>
+          {!showCreateForm ? (
+            <button
+              type="button"
+              onClick={openCreateForm}
+              className="rounded-lg bg-hms-navy px-4 py-2 text-sm font-medium text-white hover:bg-hms-navy-light"
+            >
+              Create staff
+            </button>
+          ) : null}
         </div>
 
         {loading ? (
@@ -517,7 +759,13 @@ export function AdminUsersTab({ onPendingCountChange }: AdminUsersTabProps) {
                   return (
                   <tr
                     key={user.id}
-                    className={`border-b border-hms-border/70 ${isDeactivated ? 'bg-slate-50/80' : ''}`}
+                    className={`border-b border-hms-border/70 ${
+                      editing?.userId === user.id
+                        ? 'bg-sky-50/80'
+                        : isDeactivated
+                          ? 'bg-slate-50/80'
+                          : ''
+                    }`}
                   >
                     <td className="px-2 py-3 font-medium text-hms-navy">
                       {user.name}
@@ -562,23 +810,32 @@ export function AdminUsersTab({ onPendingCountChange }: AdminUsersTabProps) {
                       {user.phone || '—'}
                     </td>
                     <td className="px-2 py-3">
-                      {isDeactivated ? (
+                      <div className="flex flex-wrap items-center gap-3">
                         <button
                           type="button"
-                          onClick={() => requestReactivate(user)}
-                          className="text-sm font-medium text-emerald-800 hover:underline"
+                          onClick={() => startEdit(user)}
+                          className="text-sm font-medium text-hms-navy hover:underline"
                         >
-                          Reactivate
+                          Edit
                         </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => requestDeactivate(user)}
-                          className="text-sm font-medium text-rose-700 hover:underline"
-                        >
-                          Deactivate
-                        </button>
-                      )}
+                        {isDeactivated ? (
+                          <button
+                            type="button"
+                            onClick={() => requestReactivate(user)}
+                            className="text-sm font-medium text-emerald-800 hover:underline"
+                          >
+                            Reactivate
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => requestDeactivate(user)}
+                            className="text-sm font-medium text-rose-700 hover:underline"
+                          >
+                            Deactivate
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                   )

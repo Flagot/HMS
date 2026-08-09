@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { submitPasswordResetRequest } from '../api/admin'
 import { API_BASE_URL } from '../api/client'
 import { PasswordField } from '../components/ui/PasswordField'
+import { useHotelBrand } from '../hotel/HotelBrandContext'
 import { authClient } from '../lib/auth-client'
 import { pathForRole } from '../lib/auth-utils'
 
@@ -15,6 +16,7 @@ type AuthMode = 'login' | 'setup' | 'forgot'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { hotelName } = useHotelBrand()
   const { data: session, isPending } = authClient.useSession()
   const [setup, setSetup] = useState<SetupStatus | null>(null)
   const [setupError, setSetupError] = useState<string | null>(null)
@@ -156,7 +158,7 @@ export function LoginPage() {
     <div className="mx-auto flex h-full w-full max-w-md flex-col justify-center px-4 py-4">
       <div className="rounded-2xl border border-hms-border bg-white p-5 shadow-sm sm:p-7">
         <p className="text-sm font-medium uppercase tracking-widest text-hms-gold">
-          GrandStay HMS
+          {hotelName}
         </p>
         <h1 className="mt-1.5 font-display text-2xl font-semibold text-hms-navy sm:text-3xl">
           {title}

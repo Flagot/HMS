@@ -1,14 +1,17 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useHotelBrand } from '../../hotel/HotelBrandContext'
 import { authClient } from '../../lib/auth-client'
 
 export function Header() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { hotelName } = useHotelBrand()
   const { data: session, isPending } = authClient.useSession()
   const user = session?.user
   const role = (user as { role?: string } | undefined)?.role?.split(',')[0]?.trim()
   const isLanding = location.pathname === '/' && !user
   const isLoginPage = location.pathname === '/login'
+  const brandMark = (hotelName.trim().charAt(0) || 'H').toUpperCase()
 
   async function handleSignOut() {
     await authClient.signOut()
@@ -33,7 +36,7 @@ export function Header() {
             }
             aria-hidden="true"
           >
-            H
+            {brandMark}
           </div>
           <div className="text-left">
             <p
@@ -43,7 +46,7 @@ export function Header() {
                   : 'font-display text-lg font-semibold leading-tight text-hms-navy'
               }
             >
-              GrandStay HMS
+              {hotelName}
             </p>
             <p
               className={
