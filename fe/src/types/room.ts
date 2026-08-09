@@ -8,6 +8,14 @@ export type Room = {
   floor: number
   type: RoomType
   status: RoomStatus
+  name?: string
+  description?: string
+  amenities?: string[]
+  capacity?: number
+  bedType?: string
+  sizeSqm?: number
+  ratePerNight?: number
+  imageUrl?: string
   note?: string
   updatedAt: string
 }
