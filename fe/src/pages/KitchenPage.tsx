@@ -1,23 +1,74 @@
-import { useEffect, useMemo, useState } from 'react'
-import { fetchKitchenMenu, updateMenuAvailability } from '../api/kitchen'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  fetchKitchenMenu,
+  fetchKitchenOrders,
+  updateKitchenOrderStatus,
+  updateMenuAvailability,
+} from '../api/kitchen'
 import { PageHeader } from '../components/ui/PageHeader'
-import type { MenuCategory, MenuItem } from '../types/order'
-import { formatMoney } from '../utils/money'
+import { KitchenAvailabilityPanel } from '../components/kitchen/KitchenAvailabilityPanel'
+import { KitchenOrderCard } from '../components/kitchen/KitchenOrderCard'
+import { QueueStatCard } from '../components/kitchen/QueueStatCard'
+import { detectOrderChanges, useInterval } from '../hooks/sync'
+import { useNotifications } from '../notifications/NotificationContext'
+import type { MenuItem, Order, OrderStatus } from '../types/order'
 
-const categoryLabels: Record<MenuCategory, string> = {
-  drinks: 'Drinks',
-  food: 'Food',
-  sides: 'Sides',
-  dessert: 'Dessert',
-}
+type KitchenTab = 'queue' | 'availability'
+type QueueFilter = 'all' | 'pending' | 'preparing' | 'ready'
 
-const categoryOrder: MenuCategory[] = ['drinks', 'food', 'sides', 'dessert']
+const POLL_MS = 5000
 
 export function KitchenPage() {
+  const { pushNotice } = useNotifications()
+  const [tab, setTab] = useState<KitchenTab>('queue')
   const [menu, setMenu] = useState<MenuItem[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
+  const [filter, setFilter] = useState<QueueFilter>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
+  const [updatingMenuId, setUpdatingMenuId] = useState<string | null>(null)
+
+  const ordersRef = useRef<Order[]>([])
+  const hasSyncedRef = useRef(false)
+
+  const syncFromServer = useCallback(async () => {
+    const [menuData, orderData] = await Promise.all([
+      fetchKitchenMenu(),
+      fetchKitchenOrders(),
+    ])
+
+    if (hasSyncedRef.current) {
+      detectOrderChanges(ordersRef.current, orderData, ({ order, previousStatus, isNew }) => {
+        const locationLabel = `${order.type === 'table' ? 'Table' : 'Room'} ${order.location}`
+
+        if (isNew && (order.status === 'pending' || order.status === 'preparing')) {
+          pushNotice({
+            tone: 'warn',
+            title: 'New kitchen ticket',
+            message: `${order.orderNumber} · ${locationLabel} just arrived.`,
+          })
+          setTab('queue')
+          return
+        }
+
+        if (previousStatus === 'pending' && order.status === 'preparing') {
+          pushNotice({
+            tone: 'info',
+            title: 'Sent by waiter',
+            message: `${order.orderNumber} · ${locationLabel} was sent to kitchen.`,
+          })
+          setTab('queue')
+          setFilter('preparing')
+        }
+      })
+    }
+
+    ordersRef.current = orderData
+    hasSyncedRef.current = true
+    setMenu(menuData)
+    setOrders(orderData)
+  }, [pushNotice])
 
   useEffect(() => {
     let cancelled = false
@@ -26,11 +77,10 @@ export function KitchenPage() {
       setLoading(true)
       setError(null)
       try {
-        const data = await fetchKitchenMenu()
-        if (!cancelled) setMenu(data)
+        await syncFromServer()
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load menu')
+          setError(err instanceof Error ? err.message : 'Failed to load kitchen data')
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -41,31 +91,85 @@ export function KitchenPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [syncFromServer])
 
-  const grouped = useMemo(
-    () =>
-      categoryOrder
-        .map((category) => ({
-          category,
-          items: menu.filter((item) => item.category === category),
-        }))
-        .filter((group) => group.items.length > 0),
-    [menu],
+  useInterval(
+    async () => {
+      try {
+        await syncFromServer()
+      } catch {
+        // Keep UI usable; next poll will retry.
+      }
+    },
+    POLL_MS,
+    { enabled: !loading },
   )
 
-  const unavailableCount = menu.filter((item) => !item.available).length
+  const counts = useMemo(() => {
+    return orders.reduce(
+      (acc, order) => {
+        if (order.status === 'pending' || order.status === 'preparing' || order.status === 'ready') {
+          acc[order.status] += 1
+        }
+        return acc
+      },
+      { pending: 0, preparing: 0, ready: 0 },
+    )
+  }, [orders])
 
-  async function handleToggle(item: MenuItem) {
-    setUpdatingId(item.id)
+  const filteredOrders = useMemo(() => {
+    const list =
+      filter === 'all' ? orders : orders.filter((order) => order.status === filter)
+    return [...list].sort(
+      (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
+    )
+  }, [orders, filter])
+
+  const activeQueueCount = counts.pending + counts.preparing
+
+  async function handleOrderStatusChange(
+    orderId: string,
+    status: Extract<OrderStatus, 'preparing' | 'ready'>,
+  ) {
+    setUpdatingOrderId(orderId)
+    setError(null)
+    try {
+      const updated = await updateKitchenOrderStatus(orderId, status)
+      setOrders((prev) => {
+        const next = prev.map((order) => (order.id === orderId ? updated : order))
+        ordersRef.current = next
+        return next
+      })
+
+      if (status === 'ready') {
+        pushNotice({
+          tone: 'success',
+          title: 'Marked ready',
+          message: `${updated.orderNumber} is ready — waiter will be notified.`,
+        })
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update order')
+    } finally {
+      setUpdatingOrderId(null)
+    }
+  }
+
+  async function handleToggleAvailability(item: MenuItem) {
+    setUpdatingMenuId(item.id)
     setError(null)
     try {
       const updated = await updateMenuAvailability(item.id, !item.available)
       setMenu((prev) => prev.map((entry) => (entry.id === item.id ? updated : entry)))
+      pushNotice({
+        tone: updated.available ? 'info' : 'warn',
+        title: updated.available ? 'Item available' : 'Item unavailable',
+        message: `${updated.name} will ${updated.available ? 'appear as available' : 'show as unavailable'} on the waiter menu.`,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update availability')
     } finally {
-      setUpdatingId(null)
+      setUpdatingMenuId(null)
     }
   }
 
@@ -73,8 +177,8 @@ export function KitchenPage() {
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
       <PageHeader
         roleLabel="Kitchen"
-        title="Menu Availability"
-        subtitle="Mark items available or unavailable so waiters can tell guests what can be ordered."
+        title="Kitchen Board"
+        subtitle="Queue syncs with waiter orders. Toggle item availability so the waiter menu stays accurate."
       />
 
       {error ? (
@@ -86,67 +190,110 @@ export function KitchenPage() {
         </div>
       ) : null}
 
-      <div className="mb-6 flex flex-wrap gap-3 text-sm text-hms-muted">
-        <span className="rounded-lg border border-hms-border bg-white px-3 py-2 shadow-sm">
-          {menu.length} menu items
-        </span>
-        <span className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800 shadow-sm">
-          {unavailableCount} unavailable
-        </span>
+      <div
+        role="tablist"
+        aria-label="Kitchen views"
+        className="mb-8 flex gap-1 rounded-xl border border-hms-border bg-hms-cream/60 p-1"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'queue'}
+          onClick={() => setTab('queue')}
+          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+            tab === 'queue'
+              ? 'bg-white text-hms-navy shadow-sm'
+              : 'text-hms-muted hover:text-hms-navy'
+          }`}
+        >
+          Queue
+          {!loading && activeQueueCount > 0 ? (
+            <span className="ml-2 rounded-full bg-hms-navy/10 px-2 py-0.5 text-xs font-semibold text-hms-navy">
+              {activeQueueCount}
+            </span>
+          ) : null}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'availability'}
+          onClick={() => setTab('availability')}
+          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+            tab === 'availability'
+              ? 'bg-white text-hms-navy shadow-sm'
+              : 'text-hms-muted hover:text-hms-navy'
+          }`}
+        >
+          Availability
+        </button>
       </div>
 
-      {loading ? (
-        <p className="rounded-xl border border-hms-border bg-white px-4 py-10 text-center text-sm text-hms-muted shadow-sm">
-          Loading menu…
-        </p>
+      {tab === 'queue' ? (
+        <div role="tabpanel" aria-label="Kitchen queue">
+          <section
+            aria-label="Queue filters"
+            className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4"
+          >
+            <QueueStatCard
+              label="All Active"
+              count={orders.length}
+              active={filter === 'all'}
+              onClick={() => setFilter('all')}
+            />
+            <QueueStatCard
+              label="Pending"
+              count={counts.pending}
+              active={filter === 'pending'}
+              onClick={() => setFilter('pending')}
+              accent="pending"
+            />
+            <QueueStatCard
+              label="Preparing"
+              count={counts.preparing}
+              active={filter === 'preparing'}
+              onClick={() => setFilter('preparing')}
+              accent="preparing"
+            />
+            <QueueStatCard
+              label="Ready"
+              count={counts.ready}
+              active={filter === 'ready'}
+              onClick={() => setFilter('ready')}
+              accent="ready"
+            />
+          </section>
+
+          {loading ? (
+            <p className="rounded-xl border border-hms-border bg-white px-4 py-10 text-center text-sm text-hms-muted shadow-sm">
+              Loading queue…
+            </p>
+          ) : filteredOrders.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {filteredOrders.map((order) => (
+                <KitchenOrderCard
+                  key={order.id}
+                  order={order}
+                  isUpdating={updatingOrderId === order.id}
+                  onStatusChange={handleOrderStatusChange}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-hms-border bg-white px-4 py-10 text-center text-sm text-hms-muted shadow-sm">
+              {orders.length === 0
+                ? 'No active kitchen tickets. Waiting for waiter orders.'
+                : 'No tickets match this filter.'}
+            </p>
+          )}
+        </div>
       ) : (
-        <div className="space-y-6">
-          {grouped.map(({ category, items }) => (
-            <section
-              key={category}
-              className="overflow-hidden rounded-xl border border-hms-border bg-white shadow-sm"
-            >
-              <h2 className="border-b border-hms-border bg-hms-cream/60 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-hms-muted">
-                {categoryLabels[category]}
-              </h2>
-              <ul className="divide-y divide-hms-border">
-                {items.map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                  >
-                    <div>
-                      <p className="font-medium text-hms-navy">{item.name}</p>
-                      <p className="text-sm text-hms-muted">{formatMoney(item.price)}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
-                          item.available
-                            ? 'bg-emerald-100 text-emerald-800 ring-emerald-200'
-                            : 'bg-red-100 text-red-800 ring-red-200'
-                        }`}
-                      >
-                        {item.available ? 'Available' : 'Unavailable'}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={updatingId === item.id}
-                        onClick={() => void handleToggle(item)}
-                        className="rounded-lg border border-hms-border px-3 py-1.5 text-xs font-medium text-hms-navy transition-colors hover:bg-hms-cream disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {updatingId === item.id
-                          ? 'Updating…'
-                          : item.available
-                            ? 'Mark unavailable'
-                            : 'Mark available'}
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
+        <div role="tabpanel" aria-label="Menu availability">
+          <KitchenAvailabilityPanel
+            menu={menu}
+            loading={loading}
+            updatingId={updatingMenuId}
+            onToggle={(item) => void handleToggleAvailability(item)}
+          />
         </div>
       )}
     </div>

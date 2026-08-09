@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   createOrder,
   fetchMenu,
@@ -11,6 +11,12 @@ import { EditOrderForm } from '../components/waiter/EditOrderForm'
 import { NewOrderForm } from '../components/waiter/NewOrderForm'
 import { OrderRow } from '../components/waiter/OrderRow'
 import { OrderStatCard } from '../components/waiter/OrderStatCard'
+import {
+  detectMenuAvailabilityChanges,
+  detectOrderChanges,
+  useInterval,
+} from '../hooks/sync'
+import { useNotifications } from '../notifications/NotificationContext'
 import type {
   CreateOrderInput,
   MenuItem,
@@ -22,7 +28,10 @@ import type {
 type FilterValue = 'all' | OrderStatus
 type WaiterTab = 'menu' | 'orders'
 
+const POLL_MS = 5000
+
 export function WaiterPage() {
+  const { pushNotice } = useNotifications()
   const [tab, setTab] = useState<WaiterTab>('menu')
   const [menu, setMenu] = useState<MenuItem[]>([])
   const [orders, setOrders] = useState<Order[]>([])
@@ -34,6 +43,43 @@ export function WaiterPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
 
+  const ordersRef = useRef<Order[]>([])
+  const menuRef = useRef<MenuItem[]>([])
+  const hasSyncedRef = useRef(false)
+
+  const syncFromServer = useCallback(async () => {
+    const [menuData, orderData] = await Promise.all([fetchMenu(), fetchOrders()])
+
+    if (hasSyncedRef.current) {
+      detectOrderChanges(ordersRef.current, orderData, ({ order, previousStatus, isNew }) => {
+        if (isNew) return
+        if (previousStatus === 'preparing' && order.status === 'ready') {
+          pushNotice({
+            tone: 'success',
+            title: 'Order ready',
+            message: `${order.orderNumber} (${order.type === 'table' ? 'Table' : 'Room'} ${order.location}) is ready to serve.`,
+          })
+          setTab('orders')
+          setFilter('ready')
+        }
+      })
+
+      detectMenuAvailabilityChanges(menuRef.current, menuData, ({ item }) => {
+        pushNotice({
+          tone: item.available ? 'info' : 'warn',
+          title: item.available ? 'Item available again' : 'Item unavailable',
+          message: `${item.name} is now ${item.available ? 'available' : 'unavailable'} on the menu.`,
+        })
+      })
+    }
+
+    ordersRef.current = orderData
+    menuRef.current = menuData
+    hasSyncedRef.current = true
+    setMenu(menuData)
+    setOrders(orderData)
+  }, [pushNotice])
+
   useEffect(() => {
     let cancelled = false
 
@@ -41,11 +87,7 @@ export function WaiterPage() {
       setLoading(true)
       setError(null)
       try {
-        const [menuData, orderData] = await Promise.all([fetchMenu(), fetchOrders()])
-        if (!cancelled) {
-          setMenu(menuData)
-          setOrders(orderData)
-        }
+        await syncFromServer()
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load waiter data')
@@ -59,7 +101,19 @@ export function WaiterPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [syncFromServer])
+
+  useInterval(
+    async () => {
+      try {
+        await syncFromServer()
+      } catch {
+        // Keep UI usable; next poll will retry.
+      }
+    },
+    POLL_MS,
+    { enabled: !loading },
+  )
 
   const counts = useMemo(() => {
     return orders.reduce(
@@ -83,17 +137,25 @@ export function WaiterPage() {
     ? (orders.find((order) => order.id === editingId) ?? null)
     : null
 
-  const openOrdersCount =
-    counts.pending + counts.preparing + counts.ready
+  const openOrdersCount = counts.pending + counts.preparing + counts.ready
 
   async function handleCreateOrder(input: CreateOrderInput) {
     setCreating(true)
     setError(null)
     try {
       const created = await createOrder(input)
-      setOrders((prev) => [created, ...prev])
+      setOrders((prev) => {
+        const next = [created, ...prev]
+        ordersRef.current = next
+        return next
+      })
       setFilter('all')
       setTab('orders')
+      pushNotice({
+        tone: 'info',
+        title: 'Order placed',
+        message: `${created.orderNumber} is pending. Send it to kitchen when ready.`,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create order')
       throw err
@@ -107,7 +169,11 @@ export function WaiterPage() {
     setError(null)
     try {
       const updated = await updateOrderItems(orderId, input)
-      setOrders((prev) => prev.map((order) => (order.id === orderId ? updated : order)))
+      setOrders((prev) => {
+        const next = prev.map((order) => (order.id === orderId ? updated : order))
+        ordersRef.current = next
+        return next
+      })
       setEditingId(null)
       setTab('orders')
     } catch (err) {
@@ -123,7 +189,26 @@ export function WaiterPage() {
     setError(null)
     try {
       const updated = await updateOrderStatus(orderId, status)
-      setOrders((prev) => prev.map((order) => (order.id === orderId ? updated : order)))
+      setOrders((prev) => {
+        const next = prev.map((order) => (order.id === orderId ? updated : order))
+        ordersRef.current = next
+        return next
+      })
+
+      if (status === 'preparing') {
+        pushNotice({
+          tone: 'info',
+          title: 'Sent to kitchen',
+          message: `${updated.orderNumber} is now in the kitchen queue.`,
+        })
+      }
+      if (status === 'served') {
+        pushNotice({
+          tone: 'success',
+          title: 'Order served',
+          message: `${updated.orderNumber} marked as served.`,
+        })
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update order')
     } finally {
@@ -146,7 +231,7 @@ export function WaiterPage() {
       <PageHeader
         roleLabel="Waiter"
         title="Service Order Board"
-        subtitle="Build orders from the menu, then track status on the orders board."
+        subtitle="Orders sync with the kitchen. You’ll be notified when food is ready, and menu availability updates live."
       />
 
       {error ? (
@@ -188,7 +273,11 @@ export function WaiterPage() {
           }`}
         >
           Orders
-          {!loading && openOrdersCount > 0 ? (
+          {!loading && counts.ready > 0 ? (
+            <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+              {counts.ready} ready
+            </span>
+          ) : !loading && openOrdersCount > 0 ? (
             <span className="ml-2 rounded-full bg-hms-navy/10 px-2 py-0.5 text-xs font-semibold text-hms-navy">
               {openOrdersCount}
             </span>
