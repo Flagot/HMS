@@ -13,12 +13,12 @@ import {
   countNights,
   derivePaymentStatus,
   roundMoney,
-  staysIncludeDate,
 } from '../utils/payment.js'
 import {
-  toReceptionRoomResponse,
-  toReservationResponse,
-} from '../utils/reservationMapper.js'
+  buildStayIncomeSummary,
+  loadRoomsWithOccupancy,
+} from '../utils/managerOverview.js'
+import { toReservationResponse } from '../utils/reservationMapper.js'
 import { AppError } from '../middleware/errorHandler.js'
 
 const validStatuses: ReservationStatus[] = [
@@ -75,28 +75,8 @@ export async function getReceptionRooms(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const [rooms, active] = await Promise.all([
-      Room.find().sort({ number: 1 }),
-      Reservation.find({ status: { $in: ['reserved', 'checked_in'] }, roomId: { $ne: null } }),
-    ])
-
-    const occupancyByRoom = new Map<string, 'reserved' | 'occupied'>()
-    for (const reservation of active) {
-      if (!reservation.roomId) continue
-      occupancyByRoom.set(
-        reservation.roomId.toString(),
-        reservation.status === 'checked_in' ? 'occupied' : 'reserved',
-      )
-    }
-
-    res.json(
-      rooms.map((room) =>
-        toReceptionRoomResponse(
-          room,
-          occupancyByRoom.get(room._id.toString()) ?? 'vacant',
-        ),
-      ),
-    )
+    const rooms = await loadRoomsWithOccupancy()
+    res.json(rooms)
   } catch (error) {
     next(error)
   }
@@ -114,41 +94,7 @@ export async function getIncomeSummary(
       throw new AppError('Invalid date', 400)
     }
 
-    const occupied = await Reservation.find({ status: 'checked_in' })
-    const activeToday = occupied.filter((reservation) =>
-      staysIncludeDate(reservation.checkInDate, reservation.checkOutDate, day),
-    )
-
-    let totalBilled = 0
-    let totalPaid = 0
-    let todayNightValue = 0
-    let occupiedFullyPaid = 0
-    let occupiedUnpaidOrPartial = 0
-
-    for (const reservation of activeToday) {
-      const billed = roundMoney(reservation.totalAmount ?? 0)
-      const paid = roundMoney(reservation.amountPaid ?? 0)
-      const status =
-        reservation.paymentStatus || derivePaymentStatus(billed, paid)
-
-      totalBilled += billed
-      totalPaid += paid
-      todayNightValue += roundMoney(reservation.ratePerNight ?? 0)
-
-      if (status === 'paid') occupiedFullyPaid += 1
-      else occupiedUnpaidOrPartial += 1
-    }
-
-    res.json({
-      date: day.toISOString().slice(0, 10),
-      occupiedRooms: activeToday.length,
-      occupiedFullyPaid,
-      occupiedUnpaidOrPartial,
-      totalBilled: roundMoney(totalBilled),
-      totalPaid: roundMoney(totalPaid),
-      totalBalanceDue: roundMoney(Math.max(0, totalBilled - totalPaid)),
-      todayNightValue: roundMoney(todayNightValue),
-    })
+    res.json(await buildStayIncomeSummary(day))
   } catch (error) {
     next(error)
   }

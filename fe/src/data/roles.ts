@@ -13,7 +13,7 @@ export const staffRoles: StaffRole[] = [
     id: 'manager',
     title: 'Manager',
     description:
-      'Oversee operations, staff schedules, occupancy, and daily performance metrics.',
+      'Dashboard for income vs expenses by day, week, or month — rooms, F&B, and operating costs.',
     path: '/manager',
     accent: 'gold',
   },

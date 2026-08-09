@@ -2,7 +2,14 @@ import { Link } from 'react-router-dom'
 import type { StaffRole } from '../../types/role'
 import { RoleIcon } from './RoleIcon'
 
-const availableRoutes = new Set(['/housekeeping', '/waiter', '/kitchen', '/reception'])
+const availableRoutes = new Set([
+  '/housekeeping',
+  '/waiter',
+  '/kitchen',
+  '/reception',
+  '/manager',
+])
+
 
 const accentStyles: Record<StaffRole['accent'], string> = {
   navy: 'bg-hms-navy/10 text-hms-navy ring-hms-navy/20',

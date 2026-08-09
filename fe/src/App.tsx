@@ -4,6 +4,7 @@ import { NotificationProvider } from './notifications/NotificationContext'
 import { HomePage } from './pages/HomePage'
 import { HousekeepingPage } from './pages/HousekeepingPage'
 import { KitchenPage } from './pages/KitchenPage'
+import { ManagerPage } from './pages/ManagerPage'
 import { ReceptionPage } from './pages/ReceptionPage'
 import { WaiterPage } from './pages/WaiterPage'
 
@@ -18,6 +19,7 @@ function App() {
             <Route path="/waiter" element={<WaiterPage />} />
             <Route path="/kitchen" element={<KitchenPage />} />
             <Route path="/reception" element={<ReceptionPage />} />
+            <Route path="/manager" element={<ManagerPage />} />
           </Routes>
         </MainLayout>
       </NotificationProvider>

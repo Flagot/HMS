@@ -2,6 +2,7 @@ import cors from 'cors'
 import express from 'express'
 import housekeepingRoutes from './routes/housekeeping.routes.js'
 import kitchenRoutes from './routes/kitchen.routes.js'
+import managerRoutes from './routes/manager.routes.js'
 import receptionRoutes from './routes/reception.routes.js'
 import waiterRoutes from './routes/waiter.routes.js'
 import { errorHandler } from './middleware/errorHandler.js'
@@ -28,6 +29,7 @@ app.use('/api/housekeeping', housekeepingRoutes)
 app.use('/api/waiter', waiterRoutes)
 app.use('/api/kitchen', kitchenRoutes)
 app.use('/api/reception', receptionRoutes)
+app.use('/api/manager', managerRoutes)
 
 app.use(errorHandler)
 

@@ -10,7 +10,8 @@
     "seed": "tsx src/scripts/seedRooms.ts",
     "seed:orders": "tsx src/scripts/seedOrders.ts",
     "seed:menu": "tsx src/scripts/seedMenu.ts",
-    "seed:reservations": "tsx src/scripts/seedReservations.ts"
+    "seed:reservations": "tsx src/scripts/seedReservations.ts",
+    "seed:expenses": "tsx src/scripts/seedExpenses.ts"
   },
   "dependencies": {
     "@types/cors": "^2.8.19",
