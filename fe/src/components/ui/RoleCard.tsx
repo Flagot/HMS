@@ -9,6 +9,7 @@ const availableRoutes = new Set([
   '/reception',
   '/manager',
   '/store',
+  '/admin',
 ])
 
 

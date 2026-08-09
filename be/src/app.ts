@@ -1,5 +1,6 @@
 import cors from 'cors'
 import express from 'express'
+import adminRoutes from './routes/admin.routes.js'
 import housekeepingRoutes from './routes/housekeeping.routes.js'
 import kitchenRoutes from './routes/kitchen.routes.js'
 import managerRoutes from './routes/manager.routes.js'
@@ -32,6 +33,7 @@ app.use('/api/kitchen', kitchenRoutes)
 app.use('/api/reception', receptionRoutes)
 app.use('/api/manager', managerRoutes)
 app.use('/api/store', storeRoutes)
+app.use('/api/admin', adminRoutes)
 
 app.use(errorHandler)
 

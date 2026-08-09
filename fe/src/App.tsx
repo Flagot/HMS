@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { MainLayout } from './components/layout/MainLayout'
 import { NotificationProvider } from './notifications/NotificationContext'
+import { AdminPage } from './pages/AdminPage'
 import { HomePage } from './pages/HomePage'
 import { HousekeepingPage } from './pages/HousekeepingPage'
 import { KitchenPage } from './pages/KitchenPage'
@@ -22,6 +23,7 @@ function App() {
             <Route path="/reception" element={<ReceptionPage />} />
             <Route path="/manager" element={<ManagerPage />} />
             <Route path="/store" element={<StoreManagerPage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </MainLayout>
       </NotificationProvider>

@@ -5,7 +5,7 @@ export const staffRoles: StaffRole[] = [
     id: 'admin',
     title: 'Administrator',
     description:
-      'Full system access — manage users, settings, reports, and hotel configuration.',
+      'Configure rooms and menu, review system-wide stats, and manage hotel settings.',
     path: '/admin',
     accent: 'navy',
   },
