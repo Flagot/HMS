@@ -3,5 +3,5 @@ export type StaffRole = {
   title: string
   description: string
   path: string
-  accent: 'navy' | 'gold' | 'teal' | 'slate' | 'amber' | 'rose'
+  accent: 'navy' | 'gold' | 'teal' | 'slate' | 'amber' | 'rose' | 'emerald'
 }

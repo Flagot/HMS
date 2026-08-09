@@ -6,6 +6,7 @@ import { HousekeepingPage } from './pages/HousekeepingPage'
 import { KitchenPage } from './pages/KitchenPage'
 import { ManagerPage } from './pages/ManagerPage'
 import { ReceptionPage } from './pages/ReceptionPage'
+import { StoreManagerPage } from './pages/StoreManagerPage'
 import { WaiterPage } from './pages/WaiterPage'
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
             <Route path="/kitchen" element={<KitchenPage />} />
             <Route path="/reception" element={<ReceptionPage />} />
             <Route path="/manager" element={<ManagerPage />} />
+            <Route path="/store" element={<StoreManagerPage />} />
           </Routes>
         </MainLayout>
       </NotificationProvider>

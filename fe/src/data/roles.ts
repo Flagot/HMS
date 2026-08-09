@@ -18,6 +18,14 @@ export const staffRoles: StaffRole[] = [
     accent: 'gold',
   },
   {
+    id: 'store',
+    title: 'Store Manager',
+    description:
+      'Track inventory, receive and issue stock, and watch low-stock alerts across departments.',
+    path: '/store',
+    accent: 'emerald',
+  },
+  {
     id: 'reception',
     title: 'Reception',
     description:
