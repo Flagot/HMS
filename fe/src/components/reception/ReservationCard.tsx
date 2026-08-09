@@ -1,12 +1,19 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import type { ReceptionRoom, Reservation } from '../../types/reservation'
 import { formatMoney, roundMoney } from '../../utils/money'
+import {
+  isRoomFreeForDates,
+  overstayNights,
+  stayDueStatus,
+  toStayDateKey,
+} from '../../utils/stayAvailability'
 import { PaymentStatusBadge } from './PaymentStatusBadge'
 import { ReservationStatusBadge } from './ReservationStatusBadge'
 
 type ReservationCardProps = {
   reservation: Reservation
   rooms: ReceptionRoom[]
+  reservations: Reservation[]
   isUpdating?: boolean
   onAssignRoom: (reservationId: string, roomId: string) => void
   onUpdatePayment: (reservationId: string, amountPaid: number) => void
@@ -25,6 +32,7 @@ function formatDate(iso: string) {
 export function ReservationCard({
   reservation,
   rooms,
+  reservations,
   isUpdating = false,
   onAssignRoom,
   onUpdatePayment,
@@ -36,19 +44,27 @@ export function ReservationCard({
   const [paidInput, setPaidInput] = useState(String(reservation.amountPaid ?? 0))
   const [editingPayment, setEditingPayment] = useState(false)
 
-  const candidateRooms = useMemo(
-    () =>
-      rooms.filter(
-        (room) =>
-          room.type === reservation.roomType &&
-          (room.occupancy === 'vacant' || room.id === reservation.roomId) &&
-          (room.housekeepingStatus === 'clean' || room.id === reservation.roomId),
-      ),
-    [rooms, reservation],
-  )
+  const candidateRooms = useMemo(() => {
+    const otherStays = reservations.filter((other) => other.id !== reservation.id)
+    const checkIn = toStayDateKey(reservation.checkInDate)
+    const checkOut = toStayDateKey(reservation.checkOutDate)
+    return rooms.filter(
+      (room) =>
+        room.type === reservation.roomType &&
+        (room.id === reservation.roomId ||
+          isRoomFreeForDates(room.id, otherStays, checkIn, checkOut)),
+    )
+  }, [rooms, reservations, reservation])
 
   const canEditPayment =
     reservation.status === 'reserved' || reservation.status === 'checked_in'
+
+  const dueStatus = stayDueStatus(reservation)
+  const owesBalance =
+    reservation.status === 'checked_in' && reservation.balanceDue > 0
+  const arrivesLater =
+    reservation.status === 'reserved' &&
+    toStayDateKey(reservation.checkInDate) > toStayDateKey(new Date())
 
   function handlePaymentSubmit(event: FormEvent) {
     event.preventDefault()
@@ -73,9 +89,25 @@ export function ReservationCard({
             {reservation.adults} adult{reservation.adults > 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <PaymentStatusBadge status={reservation.paymentStatus} />
           <ReservationStatusBadge status={reservation.status} />
+          {owesBalance ? (
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900 ring-1 ring-inset ring-amber-300">
+              Owes {formatMoney(reservation.balanceDue)}
+            </span>
+          ) : null}
+          {dueStatus === 'due_today' ? (
+            <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-900 ring-1 ring-inset ring-orange-300">
+              Due out today
+            </span>
+          ) : null}
+          {dueStatus === 'overstay' ? (
+            <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800 ring-1 ring-inset ring-red-300">
+              Overstay · {overstayNights(reservation)} night
+              {overstayNights(reservation) > 1 ? 's' : ''}
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -204,7 +236,7 @@ export function ReservationCard({
               onChange={(e) => setSelectedRoomId(e.target.value)}
               className="w-full rounded-lg border border-hms-border bg-hms-cream/40 px-3 py-2 text-sm outline-none focus:border-hms-navy"
             >
-              <option value="">Select clean vacant room</option>
+              <option value="">Select a room free for these dates</option>
               {candidateRooms.map((room) => (
                 <option key={room.id} value={room.id}>
                   {room.number} · Floor {room.floor} · {room.housekeepingStatus}
@@ -212,6 +244,12 @@ export function ReservationCard({
               ))}
             </select>
           </label>
+          {arrivesLater ? (
+            <p className="text-xs text-hms-muted">
+              Guest arrives {formatDate(reservation.checkInDate)} — check-in opens
+              that day.
+            </p>
+          ) : null}
           <div className="flex flex-wrap justify-end gap-2">
             <button
               type="button"
@@ -231,7 +269,9 @@ export function ReservationCard({
             </button>
             <button
               type="button"
-              disabled={isUpdating || !(selectedRoomId || reservation.roomId)}
+              disabled={
+                isUpdating || arrivesLater || !(selectedRoomId || reservation.roomId)
+              }
               onClick={() =>
                 onCheckIn(reservation.id, selectedRoomId || reservation.roomId)
               }

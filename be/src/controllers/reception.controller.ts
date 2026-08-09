@@ -8,6 +8,7 @@ import {
   findBlockingReservation,
   isRoomAssignableForCheckIn,
   nextConfirmationCode,
+  startOfUtcDay,
 } from '../utils/receptionHelpers.js'
 import {
   countNights,
@@ -140,6 +141,9 @@ export async function createReservation(
     const checkIn = new Date(checkInDate ?? '')
     const checkOut = new Date(checkOutDate ?? '')
     assertValidStayDates(checkIn, checkOut)
+    if (startOfUtcDay(checkIn) < startOfUtcDay(new Date())) {
+      throw new AppError('Check-in date cannot be in the past', 400)
+    }
 
     const adultsCount = Number(adults ?? 1)
     if (!Number.isInteger(adultsCount) || adultsCount < 1) {
@@ -300,6 +304,12 @@ export async function checkInReservation(
     if (!reservation) throw new AppError('Reservation not found', 404)
     if (reservation.status !== 'reserved') {
       throw new AppError('Only reserved bookings can be checked in', 400)
+    }
+    if (startOfUtcDay(reservation.checkInDate) > startOfUtcDay(new Date())) {
+      throw new AppError(
+        `Check-in starts ${reservation.checkInDate.toISOString().slice(0, 10)} — cannot check in earlier`,
+        400,
+      )
     }
 
     const targetRoomId = roomId || reservation.roomId?.toString()

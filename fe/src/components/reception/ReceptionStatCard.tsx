@@ -3,7 +3,8 @@ type ReceptionStatCardProps = {
   count: number
   active: boolean
   onClick: () => void
-  accent?: 'default' | 'reserved' | 'checked_in' | 'checked_out' | 'cancelled'
+  accent?: 'default' | 'reserved' | 'checked_in' | 'checked_out' | 'cancelled' | 'due'
+  alert?: boolean
 }
 
 const accentStyles = {
@@ -12,6 +13,7 @@ const accentStyles = {
   checked_in: 'border-emerald-200',
   checked_out: 'border-slate-200',
   cancelled: 'border-red-200',
+  due: 'border-red-300',
 }
 
 export function ReceptionStatCard({
@@ -20,16 +22,25 @@ export function ReceptionStatCard({
   active,
   onClick,
   accent = 'default',
+  alert = false,
 }: ReceptionStatCardProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border bg-white p-4 text-left shadow-sm transition-all hover:shadow-md ${
+      className={`rounded-xl border p-4 text-left shadow-sm transition-all hover:shadow-md ${
+        alert ? 'bg-red-50' : 'bg-white'
+      } ${
         active ? 'border-hms-navy ring-2 ring-hms-navy/20' : accentStyles[accent]
       }`}
     >
-      <p className="text-2xl font-semibold text-hms-navy">{count}</p>
+      <p
+        className={`text-2xl font-semibold ${
+          alert ? 'text-red-700' : 'text-hms-navy'
+        }`}
+      >
+        {count}
+      </p>
       <p className="mt-1 text-sm text-hms-muted">{label}</p>
     </button>
   )

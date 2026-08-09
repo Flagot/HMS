@@ -25,9 +25,16 @@ export function assertValidStayDates(checkIn: Date, checkOut: Date): void {
   }
 }
 
+export function startOfUtcDay(date: Date): Date {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  )
+}
+
 /**
  * Active reservation that overlaps the requested stay on this room.
- * Checkout day is available for a new same-day check-in.
+ * Comparison is at calendar-day granularity so stored clock times never
+ * matter: the checkout day stays available for a new same-day check-in.
  */
 export async function findBlockingReservation(
   roomId: string,
@@ -35,11 +42,18 @@ export async function findBlockingReservation(
   checkOut: Date,
   excludeId?: string,
 ) {
+  const checkOutDayStart = startOfUtcDay(checkOut)
+  const dayAfterCheckIn = new Date(
+    startOfUtcDay(checkIn).getTime() + 24 * 60 * 60 * 1000,
+  )
+
   const filter: Record<string, unknown> = {
     roomId,
     status: { $in: ['reserved', 'checked_in'] },
-    checkInDate: { $lt: checkOut },
-    checkOutDate: { $gt: checkIn },
+    // Existing check-in day is before the requested checkout day…
+    checkInDate: { $lt: checkOutDayStart },
+    // …and existing checkout day is after the requested check-in day.
+    checkOutDate: { $gte: dayAfterCheckIn },
   }
   if (excludeId) {
     filter._id = { $ne: excludeId }

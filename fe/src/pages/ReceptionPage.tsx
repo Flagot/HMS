@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   assignReservationRoom,
   cancelReservation,
@@ -16,6 +16,7 @@ import { ReceptionStatCard } from '../components/reception/ReceptionStatCard'
 import { ReservationCard } from '../components/reception/ReservationCard'
 import { RoomsBoard } from '../components/reception/RoomsBoard'
 import { useNotifications } from '../notifications/NotificationContext'
+import { stayDueStatus } from '../utils/stayAvailability'
 import type {
   CreateReservationInput,
   IncomeSummary,
@@ -25,7 +26,7 @@ import type {
 } from '../types/reservation'
 
 type ReceptionTab = 'rooms' | 'stays'
-type StayFilter = 'all' | ReservationStatus
+type StayFilter = 'all' | 'due_out' | ReservationStatus
 
 export function ReceptionPage() {
   const { pushNotice } = useNotifications()
@@ -83,15 +84,48 @@ export function ReceptionPage() {
     )
   }, [reservations])
 
+  const dueOutStays = useMemo(
+    () =>
+      reservations.filter(
+        (reservation) => stayDueStatus(reservation) !== 'ok',
+      ),
+    [reservations],
+  )
+  const overstayCount = useMemo(
+    () =>
+      dueOutStays.filter(
+        (reservation) => stayDueStatus(reservation) === 'overstay',
+      ).length,
+    [dueOutStays],
+  )
+
+  const notifiedOverstayRef = useRef(false)
+  useEffect(() => {
+    if (loading || notifiedOverstayRef.current || dueOutStays.length === 0) {
+      return
+    }
+    notifiedOverstayRef.current = true
+    pushNotice({
+      tone: overstayCount > 0 ? 'error' : 'warn',
+      title: overstayCount > 0 ? 'Overstay alert' : 'Due out today',
+      message:
+        overstayCount > 0
+          ? `${overstayCount} guest${overstayCount > 1 ? 's' : ''} past their checkout date. Open the Due out filter in Stays.`
+          : `${dueOutStays.length} guest${dueOutStays.length > 1 ? 's' : ''} due to check out today.`,
+    })
+  }, [loading, dueOutStays, overstayCount, pushNotice])
+
   const filteredReservations = useMemo(() => {
     const list =
       filter === 'all'
         ? reservations
-        : reservations.filter((reservation) => reservation.status === filter)
+        : filter === 'due_out'
+          ? dueOutStays
+          : reservations.filter((reservation) => reservation.status === filter)
     return [...list].sort(
       (a, b) => new Date(a.checkInDate).getTime() - new Date(b.checkInDate).getTime(),
     )
-  }, [reservations, filter])
+  }, [reservations, dueOutStays, filter])
 
   async function refreshQuietly() {
     try {
@@ -269,6 +303,19 @@ export function ReceptionPage() {
               {counts.checked_in} in-house
             </span>
           ) : null}
+          {!loading && dueOutStays.length > 0 ? (
+            <span
+              className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                overstayCount > 0
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-orange-100 text-orange-800'
+              }`}
+            >
+              {overstayCount > 0
+                ? `${overstayCount} overstay`
+                : `${dueOutStays.length} due out`}
+            </span>
+          ) : null}
         </button>
       </div>
 
@@ -284,7 +331,7 @@ export function ReceptionPage() {
 
       {tab === 'stays' ? (
         <div>
-          <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <ReceptionStatCard
               label="All"
               count={reservations.length}
@@ -304,6 +351,14 @@ export function ReceptionPage() {
               active={filter === 'checked_in'}
               onClick={() => setFilter('checked_in')}
               accent="checked_in"
+            />
+            <ReceptionStatCard
+              label={overstayCount > 0 ? 'Due out / overstay' : 'Due out'}
+              count={dueOutStays.length}
+              active={filter === 'due_out'}
+              onClick={() => setFilter('due_out')}
+              accent="due"
+              alert={overstayCount > 0}
             />
             <ReceptionStatCard
               label="Checked out"
@@ -332,6 +387,7 @@ export function ReceptionPage() {
                   key={reservation.id}
                   reservation={reservation}
                   rooms={rooms}
+                  reservations={reservations}
                   isUpdating={updatingId === reservation.id}
                   onAssignRoom={handleAssign}
                   onUpdatePayment={handleUpdatePayment}
@@ -344,8 +400,10 @@ export function ReceptionPage() {
           ) : (
             <p className="rounded-xl border border-hms-border bg-white px-4 py-10 text-center text-sm text-hms-muted shadow-sm">
               {reservations.length === 0
-                ? 'No reservations yet. Open Rooms, select a vacant clean room, and reserve it.'
-                : 'No stays match this filter.'}
+                ? 'No reservations yet. Open Rooms, select a room, and reserve it.'
+                : filter === 'due_out'
+                  ? 'No guests are due out or overstaying today.'
+                  : 'No stays match this filter.'}
             </p>
           )}
         </div>

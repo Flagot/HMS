@@ -93,21 +93,6 @@ export function RoomsBoard({
         return freeForDates
       }
 
-      // When not restricting to reservable-only, still dim date conflicts via badge on card;
-      // optionally exclude rooms blocked for the selected dates if dates are set.
-      if (datesValid) {
-        const free = canReserveRoom(
-          { ...room, housekeepingStatus: 'clean' },
-          reservations,
-          checkInFilter,
-          checkOutFilter,
-        )
-        // Show all rooms but if user wants date filter for availability when reservableOnly is off,
-        // we still show rooms - conflict shown on card. User asked to filter available by date -
-        // reservableOnly default true handles that. When false, show all matching other filters.
-        void free
-      }
-
       return true
     })
   }, [
@@ -272,7 +257,7 @@ export function RoomsBoard({
             onChange={(e) => setReservableOnly(e.target.checked)}
             className="rounded border-hms-border"
           />
-          Only rooms free for these dates (and clean)
+          Only rooms free for these dates
         </label>
       </section>
 
@@ -289,6 +274,12 @@ export function RoomsBoard({
               checkInFilter,
               checkOutFilter,
             )
+            const inHouseStay = reservations.find(
+              (reservation) =>
+                reservation.roomId === room.id &&
+                reservation.status === 'checked_in',
+            )
+            const balanceDue = inHouseStay?.balanceDue ?? 0
 
             return (
               <button
@@ -328,6 +319,11 @@ export function RoomsBoard({
                   <p className="mt-1 text-xs text-hms-muted">
                     Housekeeping: {housekeepingLabels[room.housekeepingStatus]}
                   </p>
+                  {inHouseStay && balanceDue > 0 ? (
+                    <p className="mt-2 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900">
+                      {inHouseStay.guestName} owes {formatMoney(balanceDue)}
+                    </p>
+                  ) : null}
                   <p className="mt-3 text-xs font-medium text-hms-navy/70 group-hover:text-hms-navy">
                     {freeForStay ? 'View & reserve →' : 'View details →'}
                   </p>

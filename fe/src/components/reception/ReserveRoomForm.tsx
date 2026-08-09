@@ -73,8 +73,9 @@ export function ReserveRoomForm({
         email: email.trim() || undefined,
         roomType: room.type,
         roomId: room.id,
-        checkInDate: new Date(`${checkInDate}T14:00:00`).toISOString(),
-        checkOutDate: new Date(`${checkOutDate}T11:00:00`).toISOString(),
+        // Anchor to UTC noon so the calendar day never shifts across timezones.
+        checkInDate: `${checkInDate}T12:00:00.000Z`,
+        checkOutDate: `${checkOutDate}T12:00:00.000Z`,
         adults,
         note: note.trim() || undefined,
         amountPaid,
@@ -125,6 +126,7 @@ export function ReserveRoomForm({
           <input
             type="date"
             required
+            min={today}
             value={checkInDate}
             onChange={(e) => setCheckInDate(e.target.value)}
             className="w-full rounded-lg border border-hms-border bg-hms-cream/40 px-3 py-2 text-sm outline-none focus:border-hms-navy"
@@ -135,6 +137,7 @@ export function ReserveRoomForm({
           <input
             type="date"
             required
+            min={checkInDate}
             value={checkOutDate}
             onChange={(e) => setCheckOutDate(e.target.value)}
             className="w-full rounded-lg border border-hms-border bg-hms-cream/40 px-3 py-2 text-sm outline-none focus:border-hms-navy"

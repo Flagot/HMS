@@ -23,6 +23,14 @@ const trustedOrigins = (process.env.CLIENT_URL ?? 'http://localhost:5173')
   .map((origin) => origin.trim())
   .filter(Boolean)
 
+/**
+ * When deployed, the frontend and backend live on different domains, so the
+ * session cookie must be SameSite=None + Secure or browsers will drop it and
+ * every page load looks signed-out. Local dev stays on http with the default
+ * Lax cookie.
+ */
+const useCrossSiteCookies = betterAuthUrl.startsWith('https://')
+
 /** Shared Mongo client for Better Auth (collections: user, session, account, verification). */
 export const authMongoClient = new MongoClient(mongoUri)
 export const authDb = authMongoClient.db()
@@ -52,6 +60,18 @@ export const auth = betterAuth({
   secret: betterAuthSecret,
   baseURL: betterAuthUrl,
   trustedOrigins,
+  ...(useCrossSiteCookies
+    ? {
+        advanced: {
+          useSecureCookies: true,
+          defaultCookieAttributes: {
+            sameSite: 'none' as const,
+            secure: true,
+            partitioned: true,
+          },
+        },
+      }
+    : {}),
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,

@@ -48,6 +48,34 @@ export function isRoomFreeForDates(
   )
 }
 
+export type StayDueStatus = 'ok' | 'due_today' | 'overstay'
+
+/** Due-out state of a checked-in stay compared to today's calendar date. */
+export function stayDueStatus(
+  reservation: Reservation,
+  today: Date = new Date(),
+): StayDueStatus {
+  if (reservation.status !== 'checked_in') return 'ok'
+  const outKey = toStayDateKey(reservation.checkOutDate)
+  const todayKey = toStayDateKey(today)
+  if (outKey < todayKey) return 'overstay'
+  if (outKey === todayKey) return 'due_today'
+  return 'ok'
+}
+
+/** Whole nights past the scheduled checkout date. */
+export function overstayNights(
+  reservation: Reservation,
+  today: Date = new Date(),
+): number {
+  const out = new Date(`${toStayDateKey(reservation.checkOutDate)}T00:00:00Z`)
+  const now = new Date(`${toStayDateKey(today)}T00:00:00Z`)
+  const nights = Math.round(
+    (now.getTime() - out.getTime()) / (24 * 60 * 60 * 1000),
+  )
+  return Math.max(0, nights)
+}
+
 /**
  * A room can be reserved whenever it is free for the requested dates.
  * Housekeeping status only matters at check-in time (enforced server-side).

@@ -43,16 +43,9 @@ export function RoomDetailModal({
   const [showReserveForm, setShowReserveForm] = useState(false)
   const canReserve = canReserveRoom(room, reservations, stayCheckIn, stayCheckOut)
 
-  let unavailableReason = ''
-  if (!canReserve) {
-    if (room.housekeepingStatus !== 'clean') {
-      unavailableReason =
-        'Wait until housekeeping marks this room clean before reserving.'
-    } else {
-      unavailableReason =
-        'This room already has a reservation overlapping the selected dates.'
-    }
-  }
+  const unavailableReason = canReserve
+    ? ''
+    : 'This room already has a reservation overlapping the selected dates.'
 
   return (
     <div
@@ -165,7 +158,9 @@ export function RoomDetailModal({
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-hms-border pt-4">
               <p className="text-sm text-hms-muted">
                 {canReserve
-                  ? 'This room is free for the selected dates and clean — ready to reserve.'
+                  ? room.housekeepingStatus === 'clean'
+                    ? 'This room is free for the selected dates — ready to reserve.'
+                    : 'Free for the selected dates. Housekeeping must mark it clean before check-in.'
                   : unavailableReason}
               </p>
               {canReserve ? (
