@@ -150,17 +150,22 @@ function summarizeRooms(rooms: ReceptionRoomResponse[]): ManagerRoomSnapshot {
   return snapshot
 }
 
-function summarizeFnb(
+export function summarizeFnb(
   orders: Array<{
     type: 'table' | 'room_service'
     status: 'pending' | 'preparing' | 'ready' | 'served'
+    paymentStatus?: 'unpaid' | 'paid'
     total: number
   }>,
 ): ManagerFnbSnapshot {
   const snapshot: ManagerFnbSnapshot = {
     orderCount: orders.length,
     servedCount: 0,
+    paidCount: 0,
+    unpaidCount: 0,
     revenueTotal: 0,
+    billedTotal: 0,
+    unpaidTotal: 0,
     byType: { table: 0, room_service: 0 },
     byStatus: { pending: 0, preparing: 0, ready: 0, served: 0 },
   }
@@ -168,10 +173,24 @@ function summarizeFnb(
     snapshot.byType[order.type] += 1
     snapshot.byStatus[order.status] += 1
     if (order.status === 'served') snapshot.servedCount += 1
-    snapshot.revenueTotal += roundMoney(order.total ?? 0)
+    const total = roundMoney(order.total ?? 0)
+    snapshot.billedTotal += total
+    if (order.paymentStatus === 'paid') {
+      snapshot.paidCount += 1
+      snapshot.revenueTotal += total
+    } else {
+      snapshot.unpaidCount += 1
+      snapshot.unpaidTotal += total
+    }
   }
   snapshot.revenueTotal = roundMoney(snapshot.revenueTotal)
+  snapshot.billedTotal = roundMoney(snapshot.billedTotal)
+  snapshot.unpaidTotal = roundMoney(snapshot.unpaidTotal)
   return snapshot
+}
+
+function isPaid(order: { paymentStatus?: 'unpaid' | 'paid' }): boolean {
+  return order.paymentStatus === 'paid'
 }
 
 function aggregateFoodItems(
@@ -269,7 +288,9 @@ export async function buildManagerAnalytics(
   roomsAccrued = roundMoney(roomsAccrued)
   roomsCollected = roundMoney(roomsCollected)
 
+  // Only paid orders count as F&B income.
   for (const order of orders) {
+    if (!isPaid(order)) continue
     const key = dateKey(order.createdAt)
     if (fnbIncomeByDay.has(key)) {
       fnbIncomeByDay.set(
@@ -289,8 +310,9 @@ export async function buildManagerAnalytics(
     }
   }
 
+  const paidOrders = orders.filter(isPaid)
   const fnbRevenue = roundMoney(
-    orders.reduce((sum, order) => sum + (order.total ?? 0), 0),
+    paidOrders.reduce((sum, order) => sum + (order.total ?? 0), 0),
   )
   const expenseTotal = roundMoney(
     expenses.reduce((sum, expense) => sum + (expense.amount ?? 0), 0),
@@ -352,7 +374,7 @@ export async function buildManagerAnalytics(
       { key: 'rooms', label: 'Room stays', value: roomsAccrued },
       { key: 'fnb', label: 'Food & beverage', value: fnbRevenue },
     ],
-    topFoodItems: aggregateFoodItems(orders).slice(0, 8),
+    topFoodItems: aggregateFoodItems(paidOrders).slice(0, 8),
     rooms: summarizeRooms(roomList),
   }
 }
@@ -415,8 +437,9 @@ export async function buildIncomeDetail(
     })
   }
 
+  const paidOrders = orders.filter(isPaid)
   const fnbRevenue = roundMoney(
-    orders.reduce((sum, order) => sum + (order.total ?? 0), 0),
+    paidOrders.reduce((sum, order) => sum + (order.total ?? 0), 0),
   )
 
   return {
@@ -430,7 +453,7 @@ export async function buildIncomeDetail(
       totalIncome: roundMoney(roomsAccrued + fnbRevenue),
     },
     stays,
-    foodItems: aggregateFoodItems(orders),
+    foodItems: aggregateFoodItems(paidOrders),
   }
 }
 
@@ -448,7 +471,7 @@ export async function buildFnbDetail(
     startDate: dateKey(start),
     endDate: dateKey(end),
     summary: summarizeFnb(orders),
-    foodItems: aggregateFoodItems(orders),
+    foodItems: aggregateFoodItems(orders.filter(isPaid)),
   }
 }
 

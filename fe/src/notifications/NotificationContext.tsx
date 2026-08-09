@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { NotificationStack } from './NotificationStack'
 
-export type NoticeTone = 'info' | 'success' | 'warn'
+export type NoticeTone = 'info' | 'success' | 'warn' | 'error'
 
 export type Notice = {
   id: string

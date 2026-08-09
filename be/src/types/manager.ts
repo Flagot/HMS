@@ -19,7 +19,14 @@ export type ManagerRoomSnapshot = {
 export type ManagerFnbSnapshot = {
   orderCount: number
   servedCount: number
+  paidCount: number
+  unpaidCount: number
+  /** Collected revenue — paid orders only. */
   revenueTotal: number
+  /** Total value of all orders, paid or not. */
+  billedTotal: number
+  /** Value of orders not yet paid. */
+  unpaidTotal: number
   byType: {
     table: number
     room_service: number

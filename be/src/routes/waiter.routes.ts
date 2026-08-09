@@ -4,6 +4,7 @@ import {
   getMenu,
   getOrders,
   updateOrderItems,
+  updateOrderPayment,
   updateOrderStatus,
 } from '../controllers/waiter.controller.js'
 
@@ -14,5 +15,6 @@ router.get('/orders', getOrders)
 router.post('/orders', createOrder)
 router.patch('/orders/:id/items', updateOrderItems)
 router.patch('/orders/:id/status', updateOrderStatus)
+router.patch('/orders/:id/payment', updateOrderPayment)
 
 export default router

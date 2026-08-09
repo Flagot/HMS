@@ -1,5 +1,4 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import type { AdminSettings, UpdateAdminSettingsInput } from '../../types/admin'
 import { formatPercent } from '../../utils/money'
 
@@ -9,15 +8,6 @@ type AdminSettingsTabProps = {
   saving?: boolean
   onSave: (input: UpdateAdminSettingsInput) => Promise<void>
 }
-
-const portalLinks = [
-  { to: '/manager', label: 'Manager' },
-  { to: '/store', label: 'Store Manager' },
-  { to: '/reception', label: 'Reception' },
-  { to: '/waiter', label: 'Waiter' },
-  { to: '/kitchen', label: 'Kitchen' },
-  { to: '/housekeeping', label: 'Housekeeping' },
-]
 
 export function AdminSettingsTab({
   settings,
@@ -121,23 +111,12 @@ export function AdminSettingsTab({
 
       <section className="rounded-xl border border-hms-border bg-white p-5 shadow-sm">
         <h3 className="font-display text-lg font-semibold text-hms-navy">
-          Staff portals
+          Staff accounts
         </h3>
         <p className="mt-1 text-sm text-hms-muted">
-          Jump to operational portals (requires a matching staff account). Create
-          users from the Users tab.
+          Create and manage staff logins from the Users tab. Each person lands in
+          their own department after sign-in.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {portalLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className="rounded-lg border border-hms-border bg-hms-cream/60 px-3 py-2 text-sm font-medium text-hms-navy hover:border-hms-navy hover:bg-white"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </div>
       </section>
     </div>
   )

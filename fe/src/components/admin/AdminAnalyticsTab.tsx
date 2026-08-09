@@ -103,8 +103,14 @@ export function AdminAnalyticsTab({ analytics }: AdminAnalyticsTabProps) {
   const chartData = analytics.series.map((point) => ({
     ...point,
     label: shortDate(point.date, dense),
-    occupancyPct: Math.round(point.occupancyRate * 1000) / 10,
   }))
+
+  const roomsTotal = analytics.roomsByType.reduce(
+    (sum, row) => sum + row.value,
+    0,
+  )
+  const lastPoint = analytics.series[analytics.series.length - 1]
+  const occupiedNow = lastPoint?.occupiedRooms ?? 0
 
   const cards = [
     {
@@ -113,14 +119,22 @@ export function AdminAnalyticsTab({ analytics }: AdminAnalyticsTabProps) {
       hint: `${formatMoney(analytics.kpis.roomIncome)} rooms · ${formatMoney(analytics.kpis.fnbIncome)} F&B`,
     },
     {
-      label: 'Net',
-      value: formatMoney(analytics.kpis.net),
-      hint: `Expenses ${formatMoney(analytics.kpis.totalExpenses)}`,
+      label: 'Total expenses',
+      value: formatMoney(analytics.kpis.totalExpenses),
+      hint: 'Operating costs in period',
     },
     {
-      label: 'Avg occupancy',
-      value: formatPercent(analytics.kpis.avgOccupancyRate),
-      hint: `${analytics.kpis.checkInCount} check-ins · ${analytics.kpis.checkOutCount} check-outs`,
+      label: 'Net',
+      value: formatMoney(analytics.kpis.net),
+      hint:
+        analytics.kpis.net >= 0
+          ? 'Income after expenses'
+          : 'Expenses exceed income',
+    },
+    {
+      label: 'Rooms occupied',
+      value: `${occupiedNow} / ${roomsTotal}`,
+      hint: `${formatPercent(analytics.kpis.avgOccupancyRate)} avg · ${analytics.kpis.checkInCount} check-ins`,
     },
     {
       label: 'F&B orders',
@@ -131,7 +145,7 @@ export function AdminAnalyticsTab({ analytics }: AdminAnalyticsTabProps) {
 
   return (
     <div className="space-y-6">
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {cards.map((card) => (
           <div
             key={card.label}
@@ -185,7 +199,7 @@ export function AdminAnalyticsTab({ analytics }: AdminAnalyticsTabProps) {
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-hms-border bg-white p-5 shadow-sm">
           <h3 className="font-display text-lg font-semibold text-hms-navy">
-            Occupancy trend
+            Rooms occupied
           </h3>
           <div className="mt-4 h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -194,13 +208,13 @@ export function AdminAnalyticsTab({ analytics }: AdminAnalyticsTabProps) {
                 <XAxis dataKey="label" tick={{ fill: '#6b7280', fontSize: 11 }} />
                 <YAxis
                   tick={{ fill: '#6b7280', fontSize: 11 }}
-                  width={40}
-                  domain={[0, 100]}
-                  tickFormatter={(v) => `${v}%`}
+                  width={32}
+                  domain={[0, Math.max(roomsTotal, 1)]}
+                  allowDecimals={false}
                 />
                 <Tooltip
                   formatter={(value) =>
-                    `${typeof value === 'number' ? value : value}%`
+                    `${typeof value === 'number' ? value : value} of ${roomsTotal} rooms`
                   }
                   labelFormatter={(_, payload) =>
                     String(payload?.[0]?.payload?.date ?? '')
@@ -208,8 +222,8 @@ export function AdminAnalyticsTab({ analytics }: AdminAnalyticsTabProps) {
                 />
                 <Line
                   type="monotone"
-                  dataKey="occupancyPct"
-                  name="Occupancy"
+                  dataKey="occupiedRooms"
+                  name="Rooms occupied"
                   stroke="#0f766e"
                   strokeWidth={2}
                   dot={false}

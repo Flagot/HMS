@@ -96,12 +96,15 @@ export async function buildAdminAnalytics(
     checkOutsByDay.set(key, 0)
   }
 
+  // Only paid orders count toward F&B income.
   for (const order of orders) {
     const key = dateKey(startOfUtcDay(order.createdAt))
     const bucket = ordersByDay.get(key)
     if (!bucket) continue
     bucket.count += 1
-    bucket.revenue = roundMoney(bucket.revenue + (order.total ?? 0))
+    if (order.paymentStatus === 'paid') {
+      bucket.revenue = roundMoney(bucket.revenue + (order.total ?? 0))
+    }
   }
 
   for (const expense of expenses) {
@@ -191,6 +194,7 @@ export async function buildAdminAnalytics(
     { name: string; quantity: number; revenue: number }
   >()
   for (const order of orders) {
+    if (order.paymentStatus !== 'paid') continue
     for (const item of order.items ?? []) {
       const existing = foodMap.get(item.menuItemId)
       if (existing) {

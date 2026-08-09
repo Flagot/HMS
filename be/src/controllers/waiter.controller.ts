@@ -146,6 +146,42 @@ export async function updateOrderItems(
   }
 }
 
+export async function updateOrderPayment(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params
+    const { paid } = req.body as { paid?: boolean }
+
+    if (typeof paid !== 'boolean') {
+      throw new AppError('Payment value must be true or false', 400)
+    }
+
+    const order = await Order.findById(id)
+    if (!order) {
+      throw new AppError('Order not found', 404)
+    }
+
+    if (paid) {
+      if (order.status !== 'served') {
+        throw new AppError('Only served orders can be marked as paid', 400)
+      }
+      order.paymentStatus = 'paid'
+      order.paidAt = new Date()
+    } else {
+      order.paymentStatus = 'unpaid'
+      order.paidAt = undefined
+    }
+
+    await order.save()
+    res.json(toOrderResponse(order))
+  } catch (error) {
+    next(error)
+  }
+}
+
 export async function updateOrderStatus(
   req: Request,
   res: Response,

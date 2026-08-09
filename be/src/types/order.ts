@@ -1,5 +1,7 @@
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'served'
 
+export type OrderPaymentStatus = 'unpaid' | 'paid'
+
 export type OrderType = 'table' | 'room_service'
 
 export type OrderLine = {
@@ -23,6 +25,8 @@ export type OrderResponse = {
   taxRate: number
   serviceChargeRate: number
   status: OrderStatus
+  paymentStatus: OrderPaymentStatus
+  paidAt?: string
   note?: string
   createdAt: string
   updatedAt: string

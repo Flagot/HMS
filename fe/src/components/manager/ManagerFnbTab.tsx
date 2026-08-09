@@ -31,15 +31,44 @@ export function ManagerFnbTab({ detail, loading = false }: ManagerFnbTabProps) {
         <div className="rounded-xl border border-hms-border bg-white p-4 shadow-sm">
           <p className="text-xs uppercase tracking-wide text-hms-muted">Orders</p>
           <p className="mt-1 text-2xl font-semibold text-hms-navy">{summary.orderCount}</p>
-        </div>
-        <div className="rounded-xl border border-hms-border bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wide text-hms-muted">Served</p>
-          <p className="mt-1 text-2xl font-semibold text-hms-navy">{summary.servedCount}</p>
+          <p className="mt-1 text-xs text-hms-muted">
+            {summary.servedCount} served · {summary.paidCount} paid
+          </p>
         </div>
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wide text-emerald-800/80">Revenue</p>
+          <p className="text-xs uppercase tracking-wide text-emerald-800/80">
+            Collected (paid)
+          </p>
           <p className="mt-1 text-2xl font-semibold text-emerald-900">
             {formatMoney(summary.revenueTotal)}
+          </p>
+          <p className="mt-1 text-xs text-emerald-800/80">
+            Counts toward income
+          </p>
+        </div>
+        <div
+          className={`rounded-xl border p-4 shadow-sm ${
+            summary.unpaidTotal > 0
+              ? 'border-amber-300 bg-amber-50/60'
+              : 'border-hms-border bg-white'
+          }`}
+        >
+          <p
+            className={`text-xs uppercase tracking-wide ${
+              summary.unpaidTotal > 0 ? 'text-amber-900/80' : 'text-hms-muted'
+            }`}
+          >
+            Unpaid orders
+          </p>
+          <p
+            className={`mt-1 text-2xl font-semibold ${
+              summary.unpaidTotal > 0 ? 'text-amber-950' : 'text-hms-navy'
+            }`}
+          >
+            {formatMoney(summary.unpaidTotal)}
+          </p>
+          <p className="mt-1 text-xs text-hms-muted">
+            {summary.unpaidCount} {summary.unpaidCount === 1 ? 'order' : 'orders'} awaiting payment
           </p>
         </div>
         <div className="rounded-xl border border-hms-border bg-white p-4 shadow-sm">
@@ -59,7 +88,7 @@ export function ManagerFnbTab({ detail, loading = false }: ManagerFnbTabProps) {
           Items sold
         </h3>
         <p className="mt-1 text-sm text-hms-muted">
-          Aggregated menu items from orders created in this period.
+          Aggregated menu items from paid orders in this period.
         </p>
         {detail.foodItems.length > 0 ? (
           <div className="mt-4 overflow-x-auto">

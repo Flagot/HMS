@@ -90,7 +90,7 @@ function parsePeriod(periodParam?: unknown): AdminPeriod {
   ) {
     return periodParam
   }
-  return 'week'
+  return 'day'
 }
 
 export async function getAdminOverview(

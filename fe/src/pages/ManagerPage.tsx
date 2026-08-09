@@ -6,6 +6,7 @@ import {
   fetchManagerExpenses,
   fetchManagerFnb,
   fetchManagerIncome,
+  fetchManagerOverview,
   fetchManagerRooms,
 } from '../api/manager'
 import { ManagerDashboardTab } from '../components/manager/ManagerDashboardTab'
@@ -24,6 +25,7 @@ import type {
   ManagerExpensesResult,
   ManagerFnbDetail,
   ManagerIncomeDetail,
+  ManagerOverview,
   ManagerPeriod,
   ManagerRoom,
 } from '../types/manager'
@@ -47,6 +49,7 @@ export function ManagerPage() {
   const [period, setPeriod] = useState<ManagerPeriod>('day')
   const [date, setDate] = useState(() => toDateInputValue(new Date()))
   const [analytics, setAnalytics] = useState<ManagerAnalytics | null>(null)
+  const [overview, setOverview] = useState<ManagerOverview | null>(null)
   const [income, setIncome] = useState<ManagerIncomeDetail | null>(null)
   const [expenses, setExpenses] = useState<ManagerExpensesResult | null>(null)
   const [fnb, setFnb] = useState<ManagerFnbDetail | null>(null)
@@ -57,12 +60,14 @@ export function ManagerPage() {
   const [error, setError] = useState<string | null>(null)
 
   const loadCore = useCallback(async (selectedPeriod: ManagerPeriod, selectedDate: string) => {
-    const [analyticsData, roomData] = await Promise.all([
+    const [analyticsData, roomData, overviewData] = await Promise.all([
       fetchManagerAnalytics(selectedPeriod, selectedDate),
       fetchManagerRooms(),
+      fetchManagerOverview(selectedDate),
     ])
     setAnalytics(analyticsData)
     setRooms(roomData)
+    setOverview(overviewData)
   }, [])
 
   const loadTabData = useCallback(
@@ -206,7 +211,7 @@ export function ManagerPage() {
       ) : null}
 
       {tab === 'dashboard' && analytics ? (
-        <ManagerDashboardTab analytics={analytics} />
+        <ManagerDashboardTab analytics={analytics} overview={overview} />
       ) : null}
 
       {tab === 'income' ? (

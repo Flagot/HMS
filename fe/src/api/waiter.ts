@@ -35,3 +35,13 @@ export function updateOrderStatus(
     body: JSON.stringify({ status }),
   })
 }
+
+export function updateOrderPayment(
+  orderId: string,
+  paid: boolean,
+): Promise<Order> {
+  return apiFetch<Order>(`/api/waiter/orders/${orderId}/payment`, {
+    method: 'PATCH',
+    body: JSON.stringify({ paid }),
+  })
+}

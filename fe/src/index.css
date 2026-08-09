@@ -13,10 +13,54 @@
 
   --font-sans: "Inter", system-ui, sans-serif;
   --font-display: "Playfair Display", Georgia, serif;
+
+  --animate-landing-fade: landing-fade 0.9s ease-out both;
+  --animate-landing-fade-delay: landing-fade 0.9s ease-out 0.15s both;
+  --animate-landing-fade-late: landing-fade 0.9s ease-out 0.3s both;
+  --animate-landing-ken: landing-ken 28s ease-in-out infinite alternate;
+  --animate-landing-line: landing-line 1s ease-out 0.45s both;
+}
+
+@keyframes landing-fade {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-ken {
+  from {
+    transform: scale(1.05) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.14) translate3d(-1.5%, -1%, 0);
+  }
+}
+
+@keyframes landing-line {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
 }
 
 @layer base {
   body {
     @apply font-sans text-hms-navy antialiased;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-motion,
+  .landing-ken {
+    animation: none !important;
   }
 }

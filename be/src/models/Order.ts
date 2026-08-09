@@ -1,5 +1,10 @@
 import mongoose, { Schema, type Document } from 'mongoose'
-import type { OrderLine, OrderStatus, OrderType } from '../types/order.js'
+import type {
+  OrderLine,
+  OrderPaymentStatus,
+  OrderStatus,
+  OrderType,
+} from '../types/order.js'
 
 export interface IOrder extends Document {
   orderNumber: string
@@ -13,6 +18,8 @@ export interface IOrder extends Document {
   taxRate: number
   serviceChargeRate: number
   status: OrderStatus
+  paymentStatus: OrderPaymentStatus
+  paidAt?: Date
   note?: string
   createdAt: Date
   updatedAt: Date
@@ -58,6 +65,13 @@ const orderSchema = new Schema<IOrder>(
       enum: ['pending', 'preparing', 'ready', 'served'],
       default: 'pending',
     },
+    paymentStatus: {
+      type: String,
+      required: true,
+      enum: ['unpaid', 'paid'],
+      default: 'unpaid',
+    },
+    paidAt: { type: Date },
     note: { type: String, trim: true },
   },
   {
@@ -67,5 +81,6 @@ const orderSchema = new Schema<IOrder>(
 
 orderSchema.index({ status: 1 })
 orderSchema.index({ type: 1 })
+orderSchema.index({ paymentStatus: 1 })
 
 export const Order = mongoose.model<IOrder>('Order', orderSchema)

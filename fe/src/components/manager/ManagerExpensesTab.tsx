@@ -148,6 +148,49 @@ export function ManagerExpensesTab({
         </form>
       </section>
 
+      {result && result.expenses.length > 0 ? (
+        <section className="rounded-xl border border-hms-border bg-white p-5 shadow-sm">
+          <h3 className="font-display text-lg font-semibold text-hms-navy">
+            By category
+          </h3>
+          <ul className="mt-4 space-y-2">
+            {EXPENSE_CATEGORY_OPTIONS.map((option) => {
+              const inCategory = result.expenses.filter(
+                (expense) => expense.category === option.value,
+              )
+              if (inCategory.length === 0) return null
+              const total = inCategory.reduce(
+                (sum, expense) => sum + expense.amount,
+                0,
+              )
+              const share = result.total > 0 ? total / result.total : 0
+              return (
+                <li key={option.value}>
+                  <div className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="text-hms-navy">
+                      {option.label}
+                      <span className="ml-2 text-xs text-hms-muted">
+                        {inCategory.length}{' '}
+                        {inCategory.length === 1 ? 'entry' : 'entries'}
+                      </span>
+                    </span>
+                    <span className="font-medium text-hms-navy">
+                      {formatMoney(total)}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-hms-cream">
+                    <div
+                      className="h-full rounded-full bg-hms-gold"
+                      style={{ width: `${Math.max(share * 100, 2)}%` }}
+                    />
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="rounded-xl border border-hms-border bg-white p-5 shadow-sm">
         {!result || result.expenses.length === 0 ? (
           <p className="text-sm text-hms-muted">No expenses recorded for this period.</p>

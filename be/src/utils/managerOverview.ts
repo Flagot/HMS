@@ -132,7 +132,11 @@ async function buildFnbSnapshot(day: Date): Promise<ManagerFnbSnapshot> {
   const snapshot: ManagerFnbSnapshot = {
     orderCount: orders.length,
     servedCount: 0,
+    paidCount: 0,
+    unpaidCount: 0,
     revenueTotal: 0,
+    billedTotal: 0,
+    unpaidTotal: 0,
     byType: { table: 0, room_service: 0 },
     byStatus: { pending: 0, preparing: 0, ready: 0, served: 0 },
   }
@@ -141,10 +145,20 @@ async function buildFnbSnapshot(day: Date): Promise<ManagerFnbSnapshot> {
     snapshot.byType[order.type] += 1
     snapshot.byStatus[order.status] += 1
     if (order.status === 'served') snapshot.servedCount += 1
-    snapshot.revenueTotal += roundMoney(order.total ?? 0)
+    const total = roundMoney(order.total ?? 0)
+    snapshot.billedTotal += total
+    if (order.paymentStatus === 'paid') {
+      snapshot.paidCount += 1
+      snapshot.revenueTotal += total
+    } else {
+      snapshot.unpaidCount += 1
+      snapshot.unpaidTotal += total
+    }
   }
 
   snapshot.revenueTotal = roundMoney(snapshot.revenueTotal)
+  snapshot.billedTotal = roundMoney(snapshot.billedTotal)
+  snapshot.unpaidTotal = roundMoney(snapshot.unpaidTotal)
   return snapshot
 }
 

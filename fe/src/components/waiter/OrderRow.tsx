@@ -12,6 +12,7 @@ type OrderRowProps = {
   order: Order
   isUpdating?: boolean
   onStatusChange: (orderId: string, status: OrderStatus) => void
+  onPaymentChange: (orderId: string, paid: boolean) => void
   onEdit: (orderId: string) => void
 }
 
@@ -30,10 +31,12 @@ export function OrderRow({
   order,
   isUpdating = false,
   onStatusChange,
+  onPaymentChange,
   onEdit,
 }: OrderRowProps) {
   const action = nextAction(order.status)
   const canEdit = order.status !== 'served'
+  const isPaid = order.paymentStatus === 'paid'
 
   return (
     <tr className="border-b border-hms-border last:border-0 hover:bg-hms-cream/50">
@@ -66,7 +69,18 @@ export function OrderRow({
         />
       </td>
       <td className="px-4 py-4">
-        <OrderStatusBadge status={order.status} />
+        <div className="flex flex-col items-start gap-1.5">
+          <OrderStatusBadge status={order.status} />
+          {isPaid ? (
+            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+              Paid
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+              Unpaid
+            </span>
+          )}
+        </div>
       </td>
       <td className="hidden px-4 py-4 text-sm text-hms-muted lg:table-cell">
         {order.note ?? '—'}
@@ -95,8 +109,24 @@ export function OrderRow({
             >
               {isUpdating ? 'Updating…' : action.label}
             </button>
+          ) : isPaid ? (
+            <button
+              type="button"
+              disabled={isUpdating}
+              onClick={() => onPaymentChange(order.id, false)}
+              className="rounded-lg border border-hms-border px-3 py-1.5 text-xs font-medium text-hms-muted transition-colors hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Undo paid
+            </button>
           ) : (
-            <span className="text-xs text-hms-muted">Complete</span>
+            <button
+              type="button"
+              disabled={isUpdating}
+              onClick={() => onPaymentChange(order.id, true)}
+              className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isUpdating ? 'Updating…' : 'Mark Paid'}
+            </button>
           )}
         </div>
       </td>

@@ -21,6 +21,8 @@ export function toOrderResponse(order: IOrder): OrderResponse {
     taxRate: order.taxRate,
     serviceChargeRate: order.serviceChargeRate,
     status: order.status,
+    paymentStatus: order.paymentStatus ?? 'unpaid',
+    paidAt: order.paidAt ? order.paidAt.toISOString() : undefined,
     note: order.note,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),

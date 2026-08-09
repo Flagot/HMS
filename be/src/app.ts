@@ -3,6 +3,7 @@ import express from 'express'
 import { toNodeHandler } from 'better-auth/node'
 import { auth } from './auth/auth.js'
 import { getSetupStatus } from './controllers/auth.controller.js'
+import { createPasswordResetRequest } from './controllers/passwordReset.controller.js'
 import { requireAuth, requireRole } from './middleware/auth.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import adminRoutes from './routes/admin.routes.js'
@@ -37,6 +38,7 @@ app.get('/health', (_req, res) => {
 })
 
 app.get('/api/setup-status', getSetupStatus)
+app.post('/api/password-reset-requests', createPasswordResetRequest)
 
 app.use(
   '/api/housekeeping',

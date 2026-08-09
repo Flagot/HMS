@@ -56,19 +56,26 @@ export function ManagerRevenuePanels({ overview }: ManagerRevenuePanelsProps) {
           Food &amp; beverage
         </h2>
         <p className="mt-1 text-sm text-hms-muted">
-          Orders created on {overview.date} (order totals, not separate payments).
+          Orders created on {overview.date} — only paid orders count as income.
         </p>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg border border-hms-border bg-hms-cream/40 px-3 py-3">
             <dt className="text-xs uppercase tracking-wide text-hms-muted">Orders</dt>
             <dd className="mt-1 text-xl font-semibold text-hms-navy">{fnb.orderCount}</dd>
-            <p className="mt-1 text-xs text-hms-muted">{fnb.servedCount} served</p>
+            <p className="mt-1 text-xs text-hms-muted">
+              {fnb.servedCount} served · {fnb.paidCount} paid
+            </p>
           </div>
           <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-3">
-            <dt className="text-xs uppercase tracking-wide text-emerald-800/80">Revenue</dt>
+            <dt className="text-xs uppercase tracking-wide text-emerald-800/80">
+              Collected (paid)
+            </dt>
             <dd className="mt-1 text-xl font-semibold text-emerald-900">
               {formatMoney(fnb.revenueTotal)}
             </dd>
+            <p className="mt-1 text-xs text-emerald-800/80">
+              {formatMoney(fnb.unpaidTotal)} unpaid
+            </p>
           </div>
           <div className="rounded-lg border border-hms-border bg-hms-cream/40 px-3 py-3 sm:col-span-2">
             <dt className="text-xs uppercase tracking-wide text-hms-muted">By type</dt>

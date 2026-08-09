@@ -94,3 +94,144 @@ export function deleteAdminMenuItem(id: string): Promise<{ ok: boolean }> {
     method: 'DELETE',
   })
 }
+
+export type PasswordResetRequest = {
+  id: string
+  userId: string
+  username: string
+  name: string
+  role: string
+  status: 'pending' | 'resolved' | 'dismissed'
+  createdAt: string
+  resolvedAt?: string
+}
+
+export function fetchPasswordResetRequests(
+  status: 'pending' | 'resolved' | 'dismissed' | 'all' = 'pending',
+): Promise<{ requests: PasswordResetRequest[]; pendingCount: number }> {
+  return apiFetch(
+    `/api/admin/password-reset-requests?status=${encodeURIComponent(status)}`,
+  )
+}
+
+export function fetchPasswordResetPendingCount(): Promise<{
+  pendingCount: number
+}> {
+  return apiFetch('/api/admin/password-reset-requests/pending-count')
+}
+
+export function resolvePasswordResetRequest(
+  id: string,
+  newPassword: string,
+): Promise<{ message: string; request: PasswordResetRequest }> {
+  return apiFetch(`/api/admin/password-reset-requests/${id}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ newPassword }),
+  })
+}
+
+export function dismissPasswordResetRequest(
+  id: string,
+): Promise<{ message: string; request: PasswordResetRequest }> {
+  return apiFetch(`/api/admin/password-reset-requests/${id}/dismiss`, {
+    method: 'POST',
+  })
+}
+
+export function submitPasswordResetRequest(
+  username: string,
+): Promise<{ message: string }> {
+  return apiFetch('/api/password-reset-requests', {
+    method: 'POST',
+    body: JSON.stringify({ username }),
+  })
+}
+
+export type PayStatus = 'paid' | 'upcoming' | 'due' | 'overdue' | 'unpaid'
+
+export type PayrollEmployee = {
+  userId: string
+  username: string
+  name: string
+  role: string
+  deactivated: boolean
+  paid: boolean
+  salary: number | null
+  payDay: number | null
+  payStatus: PayStatus
+  dueDate: string | null
+  daysOverdue: number
+  suggestedAmount: number | null
+  record: {
+    id: string
+    amount: number
+    paidOn: string
+    note?: string
+  } | null
+}
+
+export type AdminPayroll = {
+  month: string
+  employees: PayrollEmployee[]
+  summary: {
+    employeeCount: number
+    paidCount: number
+    unpaidCount: number
+    dueCount: number
+    overdueCount: number
+    totalPaid: number
+  }
+}
+
+export type PayrollAlerts = {
+  month: string
+  dueCount: number
+  overdueCount: number
+  alerts: {
+    userId: string
+    name: string
+    payDay: number
+    dueDate: string | null
+    payStatus: 'due' | 'overdue'
+    daysOverdue: number
+  }[]
+}
+
+export function fetchAdminPayroll(month?: string): Promise<AdminPayroll> {
+  const query = month ? `?month=${encodeURIComponent(month)}` : ''
+  return apiFetch<AdminPayroll>(`/api/admin/payroll${query}`)
+}
+
+export function markPayrollPaid(
+  userId: string,
+  input: { month: string; amount: number; note?: string },
+): Promise<{ message: string }> {
+  return apiFetch(`/api/admin/payroll/${userId}/pay`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function unmarkPayrollPaid(
+  userId: string,
+  month: string,
+): Promise<{ ok: boolean; message: string }> {
+  return apiFetch(`/api/admin/payroll/${userId}/unpay`, {
+    method: 'POST',
+    body: JSON.stringify({ month }),
+  })
+}
+
+export function updatePayrollProfile(
+  userId: string,
+  input: { salary: number; payDay: number },
+): Promise<{ userId: string; salary: number; payDay: number }> {
+  return apiFetch(`/api/admin/payroll/${userId}/profile`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function fetchPayrollAlerts(): Promise<PayrollAlerts> {
+  return apiFetch<PayrollAlerts>('/api/admin/payroll/alerts')
+}

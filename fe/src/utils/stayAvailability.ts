@@ -48,14 +48,16 @@ export function isRoomFreeForDates(
   )
 }
 
+/**
+ * A room can be reserved whenever it is free for the requested dates.
+ * Housekeeping status only matters at check-in time (enforced server-side).
+ */
 export function canReserveRoom(
   room: ReceptionRoom,
   reservations: Reservation[],
   checkInDate?: string,
   checkOutDate?: string,
 ): boolean {
-  if (room.housekeepingStatus !== 'clean') return false
-
   if (checkInDate && checkOutDate) {
     return isRoomFreeForDates(room.id, reservations, checkInDate, checkOutDate)
   }

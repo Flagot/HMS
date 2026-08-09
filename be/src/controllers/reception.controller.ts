@@ -259,7 +259,7 @@ export async function assignRoom(
       roomId,
       reservation.checkInDate,
       reservation.checkOutDate,
-      id,
+      String(id),
     )
     if (blocking) {
       throw new AppError('Room is not available for the selected dates', 400)
@@ -317,7 +317,7 @@ export async function checkInReservation(
       targetRoomId,
       reservation.checkInDate,
       reservation.checkOutDate,
-      id,
+      String(id),
     )
     if (blocking) {
       throw new AppError('Room is not available for the selected dates', 400)

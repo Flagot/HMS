@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import {
+  dismissPasswordResetRequest,
+  fetchPasswordResetRequests,
+  resolvePasswordResetRequest,
+  type PasswordResetRequest,
+} from '../../api/admin'
 import { authClient } from '../../lib/auth-client'
 import { staffRoleOptions, type StaffRoleId } from '../../lib/permissions'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
+import { PasswordField } from '../ui/PasswordField'
 
 type StaffUser = {
   id: string
@@ -13,6 +21,16 @@ type StaffUser = {
   createdAt?: Date | string
 }
 
+type PendingConfirm =
+  | {
+      kind: 'role'
+      user: StaffUser
+      nextRole: StaffRoleId
+      currentRole: StaffRoleId
+    }
+  | { kind: 'deactivate'; user: StaffUser }
+  | { kind: 'reactivate'; user: StaffUser }
+
 function roleLabel(role: string | null | undefined) {
   const id = role?.split(',')[0]?.trim()
   return staffRoleOptions.find((r) => r.id === id)?.label ?? id ?? '—'
@@ -23,9 +41,22 @@ function displayEmail(email: string | null | undefined) {
   return email
 }
 
-export function AdminUsersTab() {
+function formatWhen(iso: string) {
+  try {
+    return new Date(iso).toLocaleString()
+  } catch {
+    return iso
+  }
+}
+
+type AdminUsersTabProps = {
+  onPendingCountChange?: (count: number) => void
+}
+
+export function AdminUsersTab({ onPendingCountChange }: AdminUsersTabProps) {
   const [users, setUsers] = useState<StaffUser[]>([])
   const [total, setTotal] = useState(0)
+  const [resetRequests, setResetRequests] = useState<PasswordResetRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,8 +69,16 @@ export function AdminUsersTab() {
   const [phone, setPhone] = useState('')
   const [role, setRole] = useState<StaffRoleId>('reception')
 
+  const [resetPasswords, setResetPasswords] = useState<Record<string, string>>(
+    {},
+  )
+  const [resolvingId, setResolvingId] = useState<string | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
+    null,
+  )
+  const [confirmBusy, setConfirmBusy] = useState(false)
+
   const loadUsers = useCallback(async () => {
-    setError(null)
     const { data, error: listError } = await authClient.admin.listUsers({
       query: {
         limit: 100,
@@ -48,19 +87,33 @@ export function AdminUsersTab() {
       },
     })
     if (listError) {
-      setError(listError.message || 'Failed to load users')
-      return
+      throw new Error(listError.message || 'Failed to load users')
     }
     setUsers((data?.users ?? []) as StaffUser[])
     setTotal(data?.total ?? 0)
   }, [])
+
+  const loadResetRequests = useCallback(async () => {
+    const data = await fetchPasswordResetRequests('pending')
+    setResetRequests(data.requests)
+    onPendingCountChange?.(data.pendingCount)
+  }, [onPendingCountChange])
+
+  const loadAll = useCallback(async () => {
+    setError(null)
+    await Promise.all([loadUsers(), loadResetRequests()])
+  }, [loadUsers, loadResetRequests])
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       setLoading(true)
       try {
-        await loadUsers()
+        await loadAll()
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load users')
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -69,7 +122,7 @@ export function AdminUsersTab() {
     return () => {
       cancelled = true
     }
-  }, [loadUsers])
+  }, [loadAll])
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault()
@@ -111,40 +164,228 @@ export function AdminUsersTab() {
     }
   }
 
-  async function handleRemove(userId: string, label: string) {
-    if (!window.confirm(`Remove user "${label}"? This cannot be undone.`)) return
-    setError(null)
-    setMessage(null)
-    const { error: removeError } = await authClient.admin.removeUser({ userId })
-    if (removeError) {
-      setError(removeError.message || 'Could not remove user')
-      return
-    }
-    setMessage(`Removed ${label}`)
-    await loadUsers()
+  function requestDeactivate(user: StaffUser) {
+    setPendingConfirm({ kind: 'deactivate', user })
   }
 
-  async function handleSetRole(userId: string, nextRole: StaffRoleId) {
+  function requestReactivate(user: StaffUser) {
+    setPendingConfirm({ kind: 'reactivate', user })
+  }
+
+  function requestSetRole(user: StaffUser, nextRole: StaffRoleId) {
+    const currentRole =
+      (user.role?.split(',')[0]?.trim() as StaffRoleId) || 'reception'
+    if (currentRole === nextRole) return
+    setPendingConfirm({ kind: 'role', user, nextRole, currentRole })
+  }
+
+  async function runConfirmedAction() {
+    if (!pendingConfirm) return
+
+    setConfirmBusy(true)
     setError(null)
-    const { error: roleError } = await authClient.admin.setRole({
-      userId,
-      role: nextRole,
-    })
-    if (roleError) {
-      setError(roleError.message || 'Could not update role')
+    setMessage(null)
+
+    try {
+      const label =
+        pendingConfirm.user.username || pendingConfirm.user.name
+
+      if (pendingConfirm.kind === 'deactivate') {
+        const { error: banError } = await authClient.admin.banUser({
+          userId: pendingConfirm.user.id,
+          banReason: 'Deactivated by administrator',
+        })
+        if (banError) {
+          setError(banError.message || 'Could not deactivate user')
+          return
+        }
+        setMessage(`Deactivated ${label}`)
+      }
+
+      if (pendingConfirm.kind === 'reactivate') {
+        const { error: unbanError } = await authClient.admin.unbanUser({
+          userId: pendingConfirm.user.id,
+        })
+        if (unbanError) {
+          setError(unbanError.message || 'Could not reactivate user')
+          return
+        }
+        setMessage(`Reactivated ${label}`)
+      }
+
+      if (pendingConfirm.kind === 'role') {
+        const { error: roleError } = await authClient.admin.setRole({
+          userId: pendingConfirm.user.id,
+          role: pendingConfirm.nextRole,
+        })
+        if (roleError) {
+          setError(roleError.message || 'Could not update role')
+          return
+        }
+        setMessage(
+          `Updated role for ${label} to ${roleLabel(pendingConfirm.nextRole)}`,
+        )
+      }
+
+      setPendingConfirm(null)
+      await loadUsers()
+    } finally {
+      setConfirmBusy(false)
+    }
+  }
+
+  const confirmCopy = pendingConfirm
+    ? pendingConfirm.kind === 'role'
+      ? {
+          title: 'Change staff role?',
+          description: `Update "${pendingConfirm.user.username || pendingConfirm.user.name}" from ${roleLabel(pendingConfirm.currentRole)} to ${roleLabel(pendingConfirm.nextRole)}.`,
+          confirmLabel: 'Change role',
+          tone: 'default' as const,
+        }
+      : pendingConfirm.kind === 'deactivate'
+        ? {
+            title: 'Deactivate account?',
+            description: `"${pendingConfirm.user.username || pendingConfirm.user.name}" will not be able to sign in until an administrator reactivates the account.`,
+            confirmLabel: 'Deactivate',
+            tone: 'danger' as const,
+          }
+        : {
+            title: 'Reactivate account?',
+            description: `"${pendingConfirm.user.username || pendingConfirm.user.name}" will be able to sign in again with their existing password.`,
+            confirmLabel: 'Reactivate',
+            tone: 'success' as const,
+          }
+    : null
+
+  async function handleResolve(request: PasswordResetRequest) {
+    const nextPassword = (resetPasswords[request.id] ?? '').trim()
+    if (nextPassword.length < 6) {
+      setError('New password must be at least 6 characters')
       return
     }
-    await loadUsers()
+
+    setResolvingId(request.id)
+    setError(null)
+    setMessage(null)
+    try {
+      const result = await resolvePasswordResetRequest(request.id, nextPassword)
+      setMessage(result.message)
+      setResetPasswords((prev) => {
+        const next = { ...prev }
+        delete next[request.id]
+        return next
+      })
+      await loadResetRequests()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update password')
+    } finally {
+      setResolvingId(null)
+    }
+  }
+
+  async function handleDismiss(request: PasswordResetRequest) {
+    setResolvingId(request.id)
+    setError(null)
+    setMessage(null)
+    try {
+      const result = await dismissPasswordResetRequest(request.id)
+      setMessage(result.message)
+      await loadResetRequests()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not dismiss request')
+    } finally {
+      setResolvingId(null)
+    }
   }
 
   return (
     <div className="space-y-6">
+      <section className="rounded-xl border border-amber-200 bg-amber-50/70 p-5 shadow-sm">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="font-display text-lg font-semibold text-hms-navy">
+            Password reset requests
+          </h3>
+          <p className="text-sm text-hms-muted">
+            {resetRequests.length} pending
+          </p>
+        </div>
+        <p className="mt-1 text-sm text-hms-muted">
+          Staff who forgot their password appear here. Set a new password and
+          tell them securely.
+        </p>
+
+        {resetRequests.length === 0 ? (
+          <p className="mt-4 text-sm text-hms-muted">No pending requests.</p>
+        ) : (
+          <ul className="mt-4 space-y-4">
+            {resetRequests.map((request) => (
+              <li
+                key={request.id}
+                className="rounded-lg border border-amber-200/80 bg-white p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-hms-navy">
+                      {request.name}{' '}
+                      <span className="font-normal text-hms-muted">
+                        (@{request.username})
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-xs text-hms-muted">
+                      Role: {roleLabel(request.role)} · Requested{' '}
+                      {formatWhen(request.createdAt)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="min-w-0 flex-1">
+                    <PasswordField
+                      label="New password"
+                      id={`reset-password-${request.id}`}
+                      minLength={6}
+                      value={resetPasswords[request.id] ?? ''}
+                      onChange={(e) =>
+                        setResetPasswords((prev) => ({
+                          ...prev,
+                          [request.id]: e.target.value,
+                        }))
+                      }
+                      autoComplete="new-password"
+                      className="w-full rounded-lg border border-hms-border bg-white py-2 pr-16 pl-3 text-sm outline-none focus:border-hms-navy"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={resolvingId === request.id}
+                      onClick={() => void handleResolve(request)}
+                      className="rounded-lg bg-hms-navy px-3 py-2 text-sm font-medium text-white hover:bg-hms-navy-light disabled:opacity-60"
+                    >
+                      Set password
+                    </button>
+                    <button
+                      type="button"
+                      disabled={resolvingId === request.id}
+                      onClick={() => void handleDismiss(request)}
+                      className="rounded-lg border border-hms-border px-3 py-2 text-sm font-medium text-hms-muted hover:border-hms-navy hover:text-hms-navy disabled:opacity-60"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section className="rounded-xl border border-hms-border bg-white p-5 shadow-sm">
         <h3 className="font-display text-lg font-semibold text-hms-navy">
           Create staff account
         </h3>
         <p className="mt-1 text-sm text-hms-muted">
-          New users sign in with username and password. Email and phone are optional.
+          New users sign in with username and password. Email and phone are
+          optional.
         </p>
 
         {error && (
@@ -182,19 +423,14 @@ export function AdminUsersTab() {
               className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
             />
           </label>
-          <label className="block text-sm">
-            <span className="mb-1.5 block font-medium text-hms-navy">
-              Password
-            </span>
-            <input
-              required
-              type="password"
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-hms-border px-3 py-2 text-sm outline-none focus:border-hms-navy"
-            />
-          </label>
+          <PasswordField
+            required
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            className="w-full rounded-lg border border-hms-border bg-white py-2 pr-16 pl-3 text-sm outline-none focus:border-hms-navy"
+          />
           <label className="block text-sm">
             <span className="mb-1.5 block font-medium text-hms-navy">Role</span>
             <select
@@ -252,7 +488,9 @@ export function AdminUsersTab() {
         </div>
 
         {loading ? (
-          <p className="mt-6 text-center text-sm text-hms-muted">Loading users…</p>
+          <p className="mt-6 text-center text-sm text-hms-muted">
+            Loading users…
+          </p>
         ) : users.length === 0 ? (
           <p className="mt-6 text-center text-sm text-hms-muted">No users yet.</p>
         ) : (
@@ -263,14 +501,24 @@ export function AdminUsersTab() {
                   <th className="px-2 py-2 font-medium">Name</th>
                   <th className="px-2 py-2 font-medium">Username</th>
                   <th className="px-2 py-2 font-medium">Role</th>
+                  <th className="px-2 py-2 font-medium">Status</th>
                   <th className="px-2 py-2 font-medium">Email</th>
                   <th className="px-2 py-2 font-medium">Phone</th>
                   <th className="px-2 py-2 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
-                  <tr key={user.id} className="border-b border-hms-border/70">
+                {users.map((user) => {
+                  const currentRole =
+                    (user.role?.split(',')[0]?.trim() as StaffRoleId) ||
+                    'reception'
+                  const isDeactivated = Boolean(user.banned)
+
+                  return (
+                  <tr
+                    key={user.id}
+                    className={`border-b border-hms-border/70 ${isDeactivated ? 'bg-slate-50/80' : ''}`}
+                  >
                     <td className="px-2 py-3 font-medium text-hms-navy">
                       {user.name}
                     </td>
@@ -279,13 +527,10 @@ export function AdminUsersTab() {
                     </td>
                     <td className="px-2 py-3">
                       <select
-                        value={
-                          (user.role?.split(',')[0]?.trim() as StaffRoleId) ||
-                          'reception'
-                        }
+                        value={currentRole}
                         onChange={(e) =>
-                          void handleSetRole(
-                            user.id,
+                          requestSetRole(
+                            user,
                             e.target.value as StaffRoleId,
                           )
                         }
@@ -299,6 +544,17 @@ export function AdminUsersTab() {
                       </select>
                       <span className="sr-only">{roleLabel(user.role)}</span>
                     </td>
+                    <td className="px-2 py-3">
+                      {isDeactivated ? (
+                        <span className="rounded-md bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
+                          Deactivated
+                        </span>
+                      ) : (
+                        <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                          Active
+                        </span>
+                      )}
+                    </td>
                     <td className="px-2 py-3 text-hms-muted">
                       {displayEmail(user.email)}
                     </td>
@@ -306,26 +562,47 @@ export function AdminUsersTab() {
                       {user.phone || '—'}
                     </td>
                     <td className="px-2 py-3">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void handleRemove(
-                            user.id,
-                            user.username || user.name,
-                          )
-                        }
-                        className="text-sm font-medium text-rose-700 hover:underline"
-                      >
-                        Remove
-                      </button>
+                      {isDeactivated ? (
+                        <button
+                          type="button"
+                          onClick={() => requestReactivate(user)}
+                          className="text-sm font-medium text-emerald-800 hover:underline"
+                        >
+                          Reactivate
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => requestDeactivate(user)}
+                          className="text-sm font-medium text-rose-700 hover:underline"
+                        >
+                          Deactivate
+                        </button>
+                      )}
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
         )}
       </section>
+
+      {confirmCopy ? (
+        <ConfirmDialog
+          open
+          title={confirmCopy.title}
+          description={confirmCopy.description}
+          confirmLabel={confirmCopy.confirmLabel}
+          tone={confirmCopy.tone}
+          busy={confirmBusy}
+          onCancel={() => {
+            if (!confirmBusy) setPendingConfirm(null)
+          }}
+          onConfirm={() => void runConfirmedAction()}
+        />
+      ) : null}
     </div>
   )
 }

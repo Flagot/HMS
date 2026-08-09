@@ -1,12 +1,17 @@
 import { formatMoney } from '../../utils/money'
-import type { ManagerAnalytics } from '../../types/manager'
+import type { ManagerAnalytics, ManagerOverview } from '../../types/manager'
 import { IncomeExpenseChart, IncomeSourceChart } from './ManagerCharts'
+import { ManagerRevenuePanels } from './ManagerRevenuePanels'
 
 type ManagerDashboardTabProps = {
   analytics: ManagerAnalytics
+  overview?: ManagerOverview | null
 }
 
-export function ManagerDashboardTab({ analytics }: ManagerDashboardTabProps) {
+export function ManagerDashboardTab({
+  analytics,
+  overview,
+}: ManagerDashboardTabProps) {
   const cards = [
     {
       label: 'Total income',
@@ -56,6 +61,8 @@ export function ManagerDashboardTab({ analytics }: ManagerDashboardTabProps) {
         ))}
       </section>
 
+      {overview ? <ManagerRevenuePanels overview={overview} /> : null}
+
       <section className="mb-8 grid gap-4 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <IncomeExpenseChart series={analytics.series} />
@@ -64,6 +71,43 @@ export function ManagerDashboardTab({ analytics }: ManagerDashboardTabProps) {
           <IncomeSourceChart slices={analytics.incomeBySource} />
         </div>
       </section>
+
+      {analytics.expenses.byCategory.length > 0 ? (
+        <section className="mb-8 rounded-xl border border-hms-border bg-white p-5 shadow-sm">
+          <h3 className="font-display text-lg font-semibold text-hms-navy">
+            Expenses by category
+          </h3>
+          <ul className="mt-4 space-y-2">
+            {analytics.expenses.byCategory.map((row) => {
+              const share =
+                analytics.expenses.total > 0
+                  ? row.total / analytics.expenses.total
+                  : 0
+              return (
+                <li key={row.category}>
+                  <div className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="text-hms-navy">
+                      {row.label}
+                      <span className="ml-2 text-xs text-hms-muted">
+                        {row.count} {row.count === 1 ? 'entry' : 'entries'}
+                      </span>
+                    </span>
+                    <span className="font-medium text-hms-navy">
+                      {formatMoney(row.total)}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-hms-cream">
+                    <div
+                      className="h-full rounded-full bg-amber-500"
+                      style={{ width: `${Math.max(share * 100, 2)}%` }}
+                    />
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-hms-border bg-white p-5 shadow-sm">

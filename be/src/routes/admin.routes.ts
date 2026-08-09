@@ -13,13 +13,37 @@ import {
   updateAdminRoom,
   updateAdminSettings,
 } from '../controllers/admin.controller.js'
+import {
+  dismissPasswordResetRequest,
+  getPasswordResetPendingCount,
+  listPasswordResetRequests,
+  resolvePasswordResetRequest,
+} from '../controllers/passwordReset.controller.js'
+import {
+  getAdminPayroll,
+  getPayrollAlerts,
+  markPayrollPaid,
+  unmarkPayrollPaid,
+  updatePayrollProfile,
+} from '../controllers/payroll.controller.js'
 
 const router = Router()
+
+router.get('/payroll', getAdminPayroll)
+router.get('/payroll/alerts', getPayrollAlerts)
+router.post('/payroll/:userId/pay', markPayrollPaid)
+router.post('/payroll/:userId/unpay', unmarkPayrollPaid)
+router.patch('/payroll/:userId/profile', updatePayrollProfile)
 
 router.get('/overview', getAdminOverview)
 router.get('/analytics', getAdminAnalytics)
 router.get('/settings', getAdminSettings)
 router.patch('/settings', updateAdminSettings)
+
+router.get('/password-reset-requests', listPasswordResetRequests)
+router.get('/password-reset-requests/pending-count', getPasswordResetPendingCount)
+router.post('/password-reset-requests/:id/resolve', resolvePasswordResetRequest)
+router.post('/password-reset-requests/:id/dismiss', dismissPasswordResetRequest)
 
 router.get('/rooms', getAdminRooms)
 router.post('/rooms', createAdminRoom)

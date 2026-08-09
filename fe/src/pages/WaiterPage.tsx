@@ -4,6 +4,7 @@ import {
   fetchMenu,
   fetchOrders,
   updateOrderItems,
+  updateOrderPayment,
   updateOrderStatus,
 } from '../api/waiter'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -17,6 +18,7 @@ import {
   useInterval,
 } from '../hooks/sync'
 import { useNotifications } from '../notifications/NotificationContext'
+import { formatMoney } from '../utils/money'
 import type {
   CreateOrderInput,
   MenuItem,
@@ -125,6 +127,22 @@ export function WaiterPage() {
     )
   }, [orders])
 
+  const money = useMemo(() => {
+    return orders.reduce(
+      (acc, order) => {
+        if (order.paymentStatus === 'paid') {
+          acc.collected += order.total
+          acc.paidCount += 1
+        } else {
+          acc.unpaid += order.total
+          acc.unpaidCount += 1
+        }
+        return acc
+      },
+      { collected: 0, unpaid: 0, paidCount: 0, unpaidCount: 0 },
+    )
+  }, [orders])
+
   const filteredOrders = useMemo(() => {
     const list =
       filter === 'all' ? orders : orders.filter((order) => order.status === filter)
@@ -211,6 +229,31 @@ export function WaiterPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update order')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  async function handlePaymentChange(orderId: string, paid: boolean) {
+    setUpdatingId(orderId)
+    setError(null)
+    try {
+      const updated = await updateOrderPayment(orderId, paid)
+      setOrders((prev) => {
+        const next = prev.map((order) => (order.id === orderId ? updated : order))
+        ordersRef.current = next
+        return next
+      })
+
+      if (paid) {
+        pushNotice({
+          tone: 'success',
+          title: 'Payment recorded',
+          message: `${updated.orderNumber} marked as paid — it now counts toward income.`,
+        })
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update payment')
     } finally {
       setUpdatingId(null)
     }
@@ -309,6 +352,48 @@ export function WaiterPage() {
       ) : (
         <div role="tabpanel" aria-label="Orders">
           <section
+            aria-label="Income summary"
+            className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2"
+          >
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-emerald-800/80">
+                Total income (paid)
+              </p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-900">
+                {formatMoney(money.collected)}
+              </p>
+              <p className="mt-1 text-xs text-emerald-800/80">
+                {money.paidCount} paid {money.paidCount === 1 ? 'order' : 'orders'}
+              </p>
+            </div>
+            <div
+              className={`rounded-xl border p-4 shadow-sm ${
+                money.unpaid > 0
+                  ? 'border-amber-300 bg-amber-50/60'
+                  : 'border-hms-border bg-white'
+              }`}
+            >
+              <p
+                className={`text-xs uppercase tracking-wide ${
+                  money.unpaid > 0 ? 'text-amber-900/80' : 'text-hms-muted'
+                }`}
+              >
+                Awaiting payment
+              </p>
+              <p
+                className={`mt-1 text-2xl font-semibold ${
+                  money.unpaid > 0 ? 'text-amber-950' : 'text-hms-navy'
+                }`}
+              >
+                {formatMoney(money.unpaid)}
+              </p>
+              <p className="mt-1 text-xs text-hms-muted">
+                {money.unpaidCount} unpaid {money.unpaidCount === 1 ? 'order' : 'orders'}
+              </p>
+            </div>
+          </section>
+
+          <section
             aria-label="Order status summary"
             className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
           >
@@ -353,7 +438,7 @@ export function WaiterPage() {
             className="overflow-hidden rounded-xl border border-hms-border bg-white shadow-sm"
           >
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-left">
+              <table className="w-full min-w-180 text-left">
                 <thead className="border-b border-hms-border bg-hms-cream/60">
                   <tr>
                     <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-hms-muted">
@@ -396,6 +481,7 @@ export function WaiterPage() {
                         order={order}
                         isUpdating={updatingId === order.id}
                         onStatusChange={handleStatusChange}
+                        onPaymentChange={handlePaymentChange}
                         onEdit={handleEdit}
                       />
                     ))

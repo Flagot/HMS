@@ -75,6 +75,9 @@ export const auth = betterAuth({
       roles,
       defaultRole: 'reception',
       adminRoles: ['admin'],
+      defaultBanReason: 'Deactivated by administrator',
+      bannedUserMessage:
+        'Your account has been deactivated. Contact an administrator.',
     }),
   ],
   databaseHooks: {
