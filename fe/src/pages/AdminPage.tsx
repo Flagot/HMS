@@ -103,7 +103,7 @@ function toDateInputValue(date: Date) {
 
 export function AdminPage() {
   const { pushNotice } = useNotifications()
-  const { refreshHotelName } = useHotelBrand()
+  const { refreshHotelName, setHotelName } = useHotelBrand()
   const [tab, setTab] = useState<AdminTab>('analytics')
   const [period, setPeriod] = useState<AdminPeriod>('day')
   const [date, setDate] = useState(() => toDateInputValue(new Date()))
@@ -422,6 +422,7 @@ export function AdminPage() {
     try {
       const updated = await updateAdminSettings(input)
       setSettings(updated)
+      setHotelName(updated.hotelName)
       await refreshHotelName()
       pushNotice({
         tone: 'success',

@@ -9,6 +9,7 @@ export async function getHotelPublic(
 ): Promise<void> {
   try {
     const settings = await getOrCreateHotelSettings()
+    res.setHeader('Cache-Control', 'no-store')
     res.json({ hotelName: settings.hotelName })
   } catch (error) {
     next(error)

@@ -596,7 +596,7 @@ export function AdminUsersTab({ onPendingCountChange }: AdminUsersTabProps) {
             </div>
           </form>
         </section>
-      )}
+      ) : null}
 
       {editing ? (
         <section className="rounded-xl border border-hms-navy/20 bg-white p-5 shadow-sm ring-1 ring-hms-navy/10">
