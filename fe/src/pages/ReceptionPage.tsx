@@ -10,7 +10,7 @@ import {
   fetchReservations,
   updateReservationPayment,
 } from '../api/reception'
-import { PageHeader } from '../components/ui/PageHeader'
+import { RolePageLayout } from '../components/layout/RolePageLayout'
 import { DailyIncomePanel } from '../components/reception/DailyIncomePanel'
 import { ReceptionStatCard } from '../components/reception/ReceptionStatCard'
 import { ReservationCard } from '../components/reception/ReservationCard'
@@ -250,74 +250,53 @@ export function ReceptionPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-      <PageHeader
-        roleLabel="Reception"
-        title="Front Desk"
-        subtitle="Filter and select a room first, reserve it for a guest, then manage check-in and check-out."
-      />
-
-      {error ? (
-        <div
-          role="alert"
-          className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-        >
-          {error}
-        </div>
-      ) : null}
-
+    <RolePageLayout
+      roleLabel="Reception"
+      title="Front Desk"
+      subtitle="Filter and select a room first, reserve it for a guest, then manage check-in and check-out."
+      navLabel="Reception views"
+      navTitle="Reception menu"
+      items={[
+        { id: 'rooms', label: 'Rooms' },
+        {
+          id: 'stays',
+          label: 'Stays',
+          badge: (
+            <>
+              {!loading && counts.checked_in > 0 ? (
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                  {counts.checked_in}
+                </span>
+              ) : null}
+              {!loading && dueOutStays.length > 0 ? (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    overstayCount > 0
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-orange-100 text-orange-800'
+                  }`}
+                >
+                  {overstayCount > 0 ? overstayCount : dueOutStays.length}
+                </span>
+              ) : null}
+            </>
+          ),
+        },
+      ]}
+      activeId={tab}
+      onSelect={(id) => setTab(id as ReceptionTab)}
+      banner={
+        error ? (
+          <div
+            role="alert"
+            className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          >
+            {error}
+          </div>
+        ) : null
+      }
+    >
       <DailyIncomePanel summary={income} loading={loading} />
-
-      <div
-        role="tablist"
-        aria-label="Reception views"
-        className="mb-8 flex gap-1 rounded-xl border border-hms-border bg-hms-cream/60 p-1"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'rooms'}
-          onClick={() => setTab('rooms')}
-          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            tab === 'rooms'
-              ? 'bg-white text-hms-navy shadow-sm'
-              : 'text-hms-muted hover:text-hms-navy'
-          }`}
-        >
-          Rooms
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'stays'}
-          onClick={() => setTab('stays')}
-          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            tab === 'stays'
-              ? 'bg-white text-hms-navy shadow-sm'
-              : 'text-hms-muted hover:text-hms-navy'
-          }`}
-        >
-          Stays
-          {!loading && counts.checked_in > 0 ? (
-            <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-              {counts.checked_in} in-house
-            </span>
-          ) : null}
-          {!loading && dueOutStays.length > 0 ? (
-            <span
-              className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                overstayCount > 0
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-orange-100 text-orange-800'
-              }`}
-            >
-              {overstayCount > 0
-                ? `${overstayCount} overstay`
-                : `${dueOutStays.length} due out`}
-            </span>
-          ) : null}
-        </button>
-      </div>
 
       {tab === 'rooms' ? (
         <RoomsBoard
@@ -408,6 +387,6 @@ export function ReceptionPage() {
           )}
         </div>
       ) : null}
-    </div>
+    </RolePageLayout>
   )
 }

@@ -18,7 +18,7 @@ import {
   ManagerPeriodControls,
 } from '../components/manager/ManagerPeriodControls'
 import { ManagerRoomsBoard } from '../components/manager/ManagerRoomsBoard'
-import { PageHeader } from '../components/ui/PageHeader'
+import { RolePageLayout } from '../components/layout/RolePageLayout'
 import type {
   CreateExpenseInput,
   ManagerAnalytics,
@@ -157,13 +157,16 @@ export function ManagerPage() {
     : undefined
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-      <PageHeader
-        roleLabel="Manager"
-        title="Operations Dashboard"
-        subtitle="Track income and expenses by day, week, or month — rooms, F&B, and operating costs in one place."
-      />
-
+    <RolePageLayout
+      roleLabel="Manager"
+      title="Operations Dashboard"
+      subtitle="Track income and expenses by day, week, or month — rooms, F&B, and operating costs in one place."
+      navLabel="Manager views"
+      navTitle="Manager menu"
+      items={tabs}
+      activeId={tab}
+      onSelect={(id) => setTab(id as ManagerTab)}
+    >
       <ManagerPeriodControls
         period={period}
         date={date}
@@ -180,29 +183,6 @@ export function ManagerPage() {
           {error}
         </div>
       ) : null}
-
-      <div
-        role="tablist"
-        aria-label="Manager views"
-        className="mb-8 flex flex-wrap gap-1 rounded-xl border border-hms-border bg-hms-cream/60 p-1"
-      >
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === item.id}
-            onClick={() => setTab(item.id)}
-            className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors sm:flex-none sm:px-4 ${
-              tab === item.id
-                ? 'bg-white text-hms-navy shadow-sm'
-                : 'text-hms-muted hover:text-hms-navy'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
 
       {loading && !analytics ? (
         <p className="rounded-xl border border-hms-border bg-white px-4 py-10 text-center text-sm text-hms-muted shadow-sm">
@@ -235,6 +215,6 @@ export function ManagerPage() {
       {tab === 'fnb' ? (
         <ManagerFnbTab detail={fnb} loading={loading || tabLoading} />
       ) : null}
-    </div>
+    </RolePageLayout>
   )
 }

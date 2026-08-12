@@ -35,8 +35,8 @@ export function HomePage() {
             decoding="async"
             fetchPriority="high"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(12,20,36,0.88)_0%,rgba(12,20,36,0.62)_42%,rgba(12,20,36,0.28)_100%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(12,20,36,0.72)_0%,transparent_42%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(16,56,42,0.88)_0%,rgba(16,56,42,0.58)_42%,rgba(16,56,42,0.22)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(12,40,30,0.75)_0%,transparent_42%)]" />
         </div>
 
         <div className="relative mx-auto flex min-h-svh max-w-6xl flex-col justify-end px-4 pb-16 pt-28 sm:px-6 sm:pb-20 sm:pt-32 lg:px-8 lg:pb-24">
@@ -46,7 +46,7 @@ export function HomePage() {
             </p>
             <div
               aria-hidden="true"
-              className="landing-motion mt-5 h-px w-24 origin-left bg-hms-gold animate-landing-line"
+              className="landing-motion mt-5 h-px w-24 origin-left bg-emerald-300 animate-landing-line"
             />
             <h1 className="landing-motion mt-6 max-w-xl text-xl font-medium leading-snug text-white/92 animate-landing-fade-delay sm:text-2xl">
               Run the hotel from one calm staff portal.
@@ -58,7 +58,7 @@ export function HomePage() {
             <div className="landing-motion mt-10 animate-landing-fade-late">
               <Link
                 to="/login"
-                className="inline-flex rounded-lg bg-hms-gold px-7 py-3.5 text-sm font-semibold text-hms-navy transition hover:bg-[#d4b56e]"
+                className="inline-flex rounded-lg bg-emerald-300 px-7 py-3.5 text-sm font-semibold text-hms-navy transition hover:bg-emerald-200"
               >
                 Sign in to continue
               </Link>
@@ -67,10 +67,10 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-white/10 bg-[#121c2f] px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+      <section className="border-t border-white/10 bg-[#123528] px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
-            <p className="text-sm font-medium uppercase tracking-widest text-hms-gold">
+            <p className="text-sm font-semibold uppercase tracking-widest text-emerald-300">
               Staff roles
             </p>
             <h2 className="mt-3 font-display text-3xl font-semibold text-white sm:text-4xl">
@@ -97,7 +97,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t border-white/10 bg-[#0d1524] px-4 py-8 sm:px-6 lg:px-8">
+      <footer className="border-t border-white/10 bg-[#0d281f] px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-white/50">
             Accounts are created by an administrator — there is no public signup.

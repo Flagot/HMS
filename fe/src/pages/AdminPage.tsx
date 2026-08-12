@@ -41,8 +41,8 @@ import {
 } from '../components/manager/ManagerPeriodControls'
 import { ManagerRevenuePanels } from '../components/manager/ManagerRevenuePanels'
 import { ManagerRoomsBoard } from '../components/manager/ManagerRoomsBoard'
+import { RolePageLayout } from '../components/layout/RolePageLayout'
 import { StoreDashboardTab } from '../components/store/StoreDashboardTab'
-import { PageHeader } from '../components/ui/PageHeader'
 import { useHotelBrand } from '../hotel/HotelBrandContext'
 import { useNotifications } from '../notifications/NotificationContext'
 import type {
@@ -441,32 +441,51 @@ export function AdminPage() {
     ? formatRangeLabel(analytics.startDate, analytics.endDate)
     : undefined
 
+  const navItems = tabs.map((item) => ({
+    id: item.id,
+    label: item.label,
+    badge:
+      item.id === 'users' && pendingResets > 0 ? (
+        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
+          {pendingResets}
+        </span>
+      ) : item.id === 'payroll' && payrollAttention > 0 ? (
+        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold text-white">
+          {payrollAttention}
+        </span>
+      ) : undefined,
+  }))
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-      <PageHeader
-        roleLabel="Administrator"
-        title="System Administration"
-        subtitle="Full property control — income and expenses, F&B sales, room occupancy, store inventory, staff accounts, and hotel configuration."
-      />
-
-      {pendingResets > 0 ? (
-        <div
-          role="status"
-          className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
-        >
-          {pendingResets === 1
-            ? '1 staff member requested a password reset.'
-            : `${pendingResets} staff members requested a password reset.`}{' '}
-          <button
-            type="button"
-            onClick={() => setTab('users')}
-            className="font-medium underline underline-offset-2"
+    <RolePageLayout
+      roleLabel="Administrator"
+      title="System Administration"
+      subtitle="Full property control — income and expenses, F&B sales, room occupancy, store inventory, staff accounts, and hotel configuration."
+      navLabel="Admin views"
+      navTitle="Admin menu"
+      items={navItems}
+      activeId={tab}
+      onSelect={(id) => setTab(id as AdminTab)}
+      banner={
+        pendingResets > 0 ? (
+          <div
+            role="status"
+            className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
           >
-            Open Users
-          </button>
-        </div>
-      ) : null}
-
+            {pendingResets === 1
+              ? '1 staff member requested a password reset.'
+              : `${pendingResets} staff members requested a password reset.`}{' '}
+            <button
+              type="button"
+              onClick={() => setTab('users')}
+              className="font-medium underline underline-offset-2"
+            >
+              Open Users
+            </button>
+          </div>
+        ) : null
+      }
+    >
       {periodTabs.includes(tab) ? (
         <ManagerPeriodControls
           period={period}
@@ -485,39 +504,6 @@ export function AdminPage() {
           {error}
         </div>
       ) : null}
-
-      <div
-        role="tablist"
-        aria-label="Admin views"
-        className="mb-8 flex flex-wrap gap-1 rounded-xl border border-hms-border bg-hms-cream/60 p-1"
-      >
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === item.id}
-            onClick={() => setTab(item.id)}
-            className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors sm:flex-none sm:px-4 ${
-              tab === item.id
-                ? 'bg-white text-hms-navy shadow-sm'
-                : 'text-hms-muted hover:text-hms-navy'
-            }`}
-          >
-            {item.label}
-            {item.id === 'users' && pendingResets > 0 ? (
-              <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
-                {pendingResets}
-              </span>
-            ) : null}
-            {item.id === 'payroll' && payrollAttention > 0 ? (
-              <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold text-white">
-                {payrollAttention}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
 
       {loading && tab === 'analytics' && !analytics ? (
         <p className="rounded-xl border border-hms-border bg-white px-4 py-10 text-center text-sm text-hms-muted shadow-sm">
@@ -624,6 +610,6 @@ export function AdminPage() {
           onSave={handleSaveSettings}
         />
       ) : null}
-    </div>
+    </RolePageLayout>
   )
 }

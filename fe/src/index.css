@@ -1,18 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --color-hms-navy: #1a2b4a;
-  --color-hms-navy-light: #2a4068;
-  --color-hms-gold: #c4a35a;
-  --color-hms-gold-dark: #9a7b3c;
-  --color-hms-cream: #f8f6f1;
-  --color-hms-teal: #2d6a6a;
-  --color-hms-slate: #475569;
-  --color-hms-muted: #64748b;
-  --color-hms-border: #e2ddd3;
+  /* Deep forest green — primary text / buttons (kept as hms-navy for compatibility) */
+  --color-hms-navy: #1b4d3e;
+  --color-hms-navy-light: #2a6b55;
+  /* Soft leaf accent (kept as hms-gold for compatibility) */
+  --color-hms-gold: #3d9a6a;
+  --color-hms-gold-dark: #2d7a52;
+  /* Misty mint page background */
+  --color-hms-cream: #f2faf5;
+  --color-hms-teal: #1f7a5c;
+  --color-hms-slate: #3d5a4f;
+  --color-hms-muted: #5c7468;
+  --color-hms-border: #cfe5d8;
 
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-display: "Playfair Display", Georgia, serif;
+  --font-sans: "Figtree", system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
 
   --animate-landing-fade: landing-fade 0.9s ease-out both;
   --animate-landing-fade-delay: landing-fade 0.9s ease-out 0.15s both;

@@ -13,6 +13,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const { data: session } = authClient.useSession()
   const isLanding = location.pathname === '/' && !session?.user
   const isLogin = location.pathname === '/login'
+  const isAppShell = !isLanding && !isLogin
 
   return (
     <div
@@ -25,10 +26,18 @@ export function MainLayout({ children }: MainLayoutProps) {
       }
     >
       <Header />
-      <main className={isLogin ? 'flex min-h-0 flex-1 flex-col' : 'flex-1'}>
+      <main
+        className={
+          isLogin
+            ? 'flex min-h-0 flex-1 flex-col'
+            : isAppShell
+              ? 'flex min-h-0 flex-1 flex-col'
+              : 'flex-1'
+        }
+      >
         {children}
       </main>
-      {!isLanding && !isLogin ? <Footer /> : null}
+      {isAppShell ? <Footer /> : null}
     </div>
   )
 }

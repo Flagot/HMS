@@ -32,7 +32,7 @@ export function RoleCard({ role }: RoleCardProps) {
   const isAvailable = availableRoutes.has(role.path)
 
   return (
-    <article className="group flex flex-col rounded-xl border border-hms-border bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-hms-gold/40 hover:shadow-md">
+    <article className="group flex flex-col rounded-xl border border-hms-border bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-hms-gold/50 hover:shadow-md">
       <div
         className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg ring-1 ${accent}`}
       >

@@ -23,16 +23,16 @@ export function Header() {
       className={
         isLanding
           ? 'absolute inset-x-0 top-0 z-20 border-b border-white/10 bg-linear-to-b from-black/35 to-transparent'
-          : 'sticky top-0 z-10 border-b border-hms-border bg-white/80 backdrop-blur-sm'
+          : 'sticky top-0 z-20 border-b border-hms-border bg-white/90 backdrop-blur-md'
       }
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-[90rem] items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-3">
           <div
             className={
               isLanding
-                ? 'flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 font-display text-lg font-semibold text-hms-gold ring-1 ring-white/20'
-                : 'flex h-10 w-10 items-center justify-center rounded-lg bg-hms-navy font-display text-lg font-semibold text-hms-gold'
+                ? 'flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 font-display text-lg font-semibold text-emerald-200 ring-1 ring-white/20'
+                : 'flex h-10 w-10 items-center justify-center rounded-xl bg-hms-navy font-display text-lg font-semibold text-white shadow-sm shadow-hms-navy/20'
             }
             aria-hidden="true"
           >
@@ -70,7 +70,7 @@ export function Header() {
               <button
                 type="button"
                 onClick={() => void handleSignOut()}
-                className="rounded-lg border border-hms-border bg-white px-3 py-1.5 text-xs font-medium text-hms-navy hover:border-hms-navy"
+                className="rounded-lg border border-hms-border bg-white px-3 py-1.5 text-xs font-medium text-hms-navy transition hover:border-hms-navy hover:bg-hms-cream"
               >
                 Sign out
               </button>
@@ -80,8 +80,8 @@ export function Header() {
               to="/login"
               className={
                 isLanding
-                  ? 'rounded-lg border border-white/35 bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition hover:border-hms-gold hover:bg-hms-gold/20'
-                  : 'rounded-lg bg-hms-navy px-3 py-1.5 text-xs font-medium text-white hover:bg-hms-navy-light'
+                  ? 'rounded-lg border border-white/35 bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition hover:border-emerald-200 hover:bg-emerald-400/20'
+                  : 'rounded-lg bg-hms-navy px-3 py-1.5 text-xs font-medium text-white transition hover:bg-hms-navy-light'
               }
             >
               Sign in

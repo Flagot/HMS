@@ -157,7 +157,7 @@ export function LoginPage() {
   return (
     <div className="mx-auto flex h-full w-full max-w-md flex-col justify-center px-4 py-4">
       <div className="rounded-2xl border border-hms-border bg-white p-5 shadow-sm sm:p-7">
-        <p className="text-sm font-medium uppercase tracking-widest text-hms-gold">
+        <p className="text-sm font-semibold uppercase tracking-widest text-hms-gold">
           {hotelName}
         </p>
         <h1 className="mt-1.5 font-display text-2xl font-semibold text-hms-navy sm:text-3xl">

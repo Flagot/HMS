@@ -5,7 +5,7 @@ import {
   updateKitchenOrderStatus,
   updateMenuAvailability,
 } from '../api/kitchen'
-import { PageHeader } from '../components/ui/PageHeader'
+import { RolePageLayout } from '../components/layout/RolePageLayout'
 import { KitchenAvailabilityPanel } from '../components/kitchen/KitchenAvailabilityPanel'
 import { KitchenOrderCard } from '../components/kitchen/KitchenOrderCard'
 import { QueueStatCard } from '../components/kitchen/QueueStatCard'
@@ -174,60 +174,38 @@ export function KitchenPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-      <PageHeader
-        roleLabel="Kitchen"
-        title="Kitchen Board"
-        subtitle="Queue syncs with waiter orders. Toggle item availability so the waiter menu stays accurate."
-      />
-
-      {error ? (
-        <div
-          role="alert"
-          className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-        >
-          {error}
-        </div>
-      ) : null}
-
-      <div
-        role="tablist"
-        aria-label="Kitchen views"
-        className="mb-8 flex gap-1 rounded-xl border border-hms-border bg-hms-cream/60 p-1"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'queue'}
-          onClick={() => setTab('queue')}
-          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            tab === 'queue'
-              ? 'bg-white text-hms-navy shadow-sm'
-              : 'text-hms-muted hover:text-hms-navy'
-          }`}
-        >
-          Queue
-          {!loading && activeQueueCount > 0 ? (
-            <span className="ml-2 rounded-full bg-hms-navy/10 px-2 py-0.5 text-xs font-semibold text-hms-navy">
-              {activeQueueCount}
-            </span>
-          ) : null}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'availability'}
-          onClick={() => setTab('availability')}
-          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            tab === 'availability'
-              ? 'bg-white text-hms-navy shadow-sm'
-              : 'text-hms-muted hover:text-hms-navy'
-          }`}
-        >
-          Availability
-        </button>
-      </div>
-
+    <RolePageLayout
+      roleLabel="Kitchen"
+      title="Kitchen Board"
+      subtitle="Queue syncs with waiter orders. Toggle item availability so the waiter menu stays accurate."
+      navLabel="Kitchen views"
+      navTitle="Kitchen menu"
+      items={[
+        {
+          id: 'queue',
+          label: 'Queue',
+          badge:
+            !loading && activeQueueCount > 0 ? (
+              <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white">
+                {activeQueueCount}
+              </span>
+            ) : undefined,
+        },
+        { id: 'availability', label: 'Availability' },
+      ]}
+      activeId={tab}
+      onSelect={(id) => setTab(id as KitchenTab)}
+      banner={
+        error ? (
+          <div
+            role="alert"
+            className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          >
+            {error}
+          </div>
+        ) : null
+      }
+    >
       {tab === 'queue' ? (
         <div role="tabpanel" aria-label="Kitchen queue">
           <section
@@ -296,6 +274,6 @@ export function KitchenPage() {
           />
         </div>
       )}
-    </div>
+    </RolePageLayout>
   )
 }

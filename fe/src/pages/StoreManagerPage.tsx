@@ -13,7 +13,7 @@ import { StoreDashboardTab } from '../components/store/StoreDashboardTab'
 import { StoreInventoryTab } from '../components/store/StoreInventoryTab'
 import { StoreLowStockTab } from '../components/store/StoreLowStockTab'
 import { StoreMovementsTab } from '../components/store/StoreMovementsTab'
-import { PageHeader } from '../components/ui/PageHeader'
+import { RolePageLayout } from '../components/layout/RolePageLayout'
 import type {
   CreateStockMovementInput,
   CreateStoreItemInput,
@@ -193,45 +193,26 @@ export function StoreManagerPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-      <PageHeader
-        roleLabel="Store Manager"
-        title="Store Inventory"
-        subtitle="Manage hotel store stock — catalog items, receive deliveries, issue to departments, and catch low-stock early."
-      />
-
-      {error ? (
-        <div
-          role="alert"
-          className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-        >
-          {error}
-        </div>
-      ) : null}
-
-      <div
-        role="tablist"
-        aria-label="Store manager views"
-        className="mb-8 flex flex-wrap gap-1 rounded-xl border border-hms-border bg-hms-cream/60 p-1"
-      >
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === item.id}
-            onClick={() => setTab(item.id)}
-            className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors sm:flex-none sm:px-4 ${
-              tab === item.id
-                ? 'bg-white text-hms-navy shadow-sm'
-                : 'text-hms-muted hover:text-hms-navy'
-            }`}
+    <RolePageLayout
+      roleLabel="Store Manager"
+      title="Store Inventory"
+      subtitle="Manage hotel store stock — catalog items, receive deliveries, issue to departments, and catch low-stock early."
+      navLabel="Store manager views"
+      navTitle="Store menu"
+      items={tabs}
+      activeId={tab}
+      onSelect={(id) => setTab(id as StoreTab)}
+      banner={
+        error ? (
+          <div
+            role="alert"
+            className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
           >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
+            {error}
+          </div>
+        ) : null
+      }
+    >
       {loading && !overview ? (
         <p className="rounded-xl border border-hms-border bg-white px-4 py-10 text-center text-sm text-hms-muted shadow-sm">
           Loading store…
@@ -270,6 +251,6 @@ export function StoreManagerPage() {
       {tab === 'low-stock' ? (
         <StoreLowStockTab result={lowStock} loading={loading || tabLoading} />
       ) : null}
-    </div>
+    </RolePageLayout>
   )
 }

@@ -68,7 +68,8 @@ export function HousekeepingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+    <div className="min-h-[calc(100svh-4.5rem)] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+      <div className="mx-auto max-w-5xl">
       <PageHeader
         roleLabel="Housekeeping"
         title="Room Status Board"
@@ -181,6 +182,7 @@ export function HousekeepingPage() {
           </table>
         </div>
       </section>
+      </div>
     </div>
   )
 }
